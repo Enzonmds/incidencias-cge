@@ -39,3 +39,13 @@ export const createUser = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
+
+export const getAdUsers = async (req, res) => {
+    // Mock data representing what we would get from Active Directory / LDAP
+    const adUsers = [
+        { id: 101, name: 'Capitán Gutierrez', email: 'jgutierrez@ejercito.mil.ar', unit: 'Regimiento de Infantería 1', status: 'SYNCED' },
+        { id: 102, name: 'Sargento Mendez', email: 'mmendez@ejercito.mil.ar', unit: 'Batallón Logístico', status: 'SYNCED' },
+        { id: 103, name: 'Suboficial Perez', email: 'pperez@ejercito.mil.ar', unit: 'Comando de Personal', status: 'SYNCED' },
+    ];
+    res.json(adUsers);
+};

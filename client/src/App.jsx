@@ -1,14 +1,18 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
-import ProtectedRoute from './components/ProtectedRoute';
 import MainLayout from './layouts/MainLayout';
-import Dashboard from './pages/Dashboard';
-import TicketDetail from './pages/TicketDetail';
-import TicketsPage from './pages/TicketsPage';
+import ProtectedRoute from './components/ProtectedRoute';
+
+// Pages
 import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import TicketsPage from './pages/TicketsPage';
+import TicketDetail from './pages/TicketDetail';
 import UsersPage from './pages/UsersPage';
 import ReportsPage from './pages/ReportsPage';
+import TriagePage from './pages/TriagePage';
+import TechSupportPage from './pages/TechSupportPage';
 
 function App() {
   return (
@@ -20,8 +24,10 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<MainLayout />}>
               <Route index element={<Dashboard />} />
-              <Route path="tickets/:id" element={<TicketDetail />} />
               <Route path="tickets" element={<TicketsPage />} />
+              <Route path="tickets/:id" element={<TicketDetail />} />
+              <Route path="triage" element={<TriagePage />} />
+              <Route path="support" element={<TechSupportPage />} />
               <Route path="users" element={<UsersPage />} />
               <Route path="reports" element={<ReportsPage />} />
             </Route>

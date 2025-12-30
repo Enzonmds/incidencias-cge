@@ -1,9 +1,15 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
-  background-color: #F4F6F8; /* cge-bg */
-  color: #1a1a1a;
+  background-color: #F8FAFC;
+  /* Softer gray */
+  color: #1E293B;
+  /* Slate 800 */
+  font-family: 'Inter', sans-serif;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }

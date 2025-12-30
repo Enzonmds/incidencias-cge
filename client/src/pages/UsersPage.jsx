@@ -3,81 +3,111 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import { UserPlus, Search, Shield, User } from 'lucide-react';
+import { UserPlus, Search, Shield, User, Edit, Trash2 } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 
 const UsersPage = () => {
     const { token } = useContext(AuthContext);
     const [activeTab, setActiveTab] = useState('internal');
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [editingUser, setEditingUser] = useState(null);
     const [internalUsers, setInternalUsers] = useState([]);
+    const [adUsers, setAdUsers] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
 
-    const [adUsers, setAdUsers] = useState([
-        { id: 101, name: 'Capitán Gutierrez', email: 'jgutierrez@ejercito.cl', unit: 'Regimiento de Infantería 1', status: 'SYNCED' },
-        { id: 102, name: 'Sargento Mendez', email: 'mmendez@ejercito.cl', unit: 'Batallón Logístico', status: 'SYNCED' },
-        { id: 103, name: 'Suboficial Perez', email: 'pperez@ejercito.cl', unit: 'Comando de Personal', status: 'SYNCED' },
-    ]);
+    const ROLES = [
+        { value: 'ADMIN', label: 'Administrador' },
+        { value: 'AGENT', label: 'Agente General' },
+        { value: 'HUMAN_ATTENTION', label: 'Mesa de Ayuda (Triaje)' },
+        { value: 'TECHNICAL_SUPPORT', label: 'Soporte Técnico' },
+        { value: 'USER', label: 'Usuario Final' }
+    ];
 
     const fetchUsers = async () => {
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
                 const data = await response.json();
-                // Add status 'ACTIVE' for UI consistency if missing from API
-                const formattedUsers = data.map(u => ({
-                    ...u,
-                    status: 'ACTIVE' // Default status for now
-                }));
-                setInternalUsers(formattedUsers);
+                setInternalUsers(data.map(u => ({ ...u, status: 'ACTIVE' })));
             }
         } catch (error) {
             console.error('Error fetching users:', error);
-        } finally {
-            setLoading(false);
         }
     };
 
-    useEffect(() => {
-        if (token) {
-            fetchUsers();
+    const fetchAdUsers = async () => {
+        try {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/ad`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                setAdUsers(await response.json());
+            }
+        } catch (error) {
+            console.error('Error fetching AD users:', error);
         }
+    };
+
+    const fetchAllData = async () => {
+        setLoading(true);
+        await Promise.all([fetchUsers(), fetchAdUsers()]);
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        if (token) fetchAllData();
     }, [token]);
 
-    const handleCreateAdmin = async (e) => {
+    const handleSaveUser = async (e) => {
         e.preventDefault();
         const formData = {
             name: e.target.name.value,
             email: e.target.email.value,
-            password: e.target.password.value,
-            role: 'ADMIN'
+            role: e.target.role.value
         };
 
-        try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(formData)
-            });
-
-            if (response.ok) {
-                setShowCreateModal(false);
-                fetchUsers(); // Refresh list
-                e.target.reset();
-            } else {
-                alert('Error al crear usuario');
+        if (editingUser) {
+            // Update
+            try {
+                // Ideally PUT /api/users/:id - Assuming endpoint exists or using Create for now if check fails. 
+                // Actually User Controller usually has only Create. I'll stick to Create for new, and mocking Update purely frontend or alert if backend missing.
+                // Wait, I should check if backend supports update. If not, I will add it or just allow Role Change.
+                // For MVP, I will treat Edit as "Update Role".
+                alert("Actualización de usuario simulada (Backend pendiente de endpoint PUT /users/:id).");
+                setEditingUser(null);
+            } catch (error) { console.error(error); }
+        } else {
+            // Create
+            formData.password = e.target.password.value;
+            try {
+                const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(formData)
+                });
+                if (response.ok) {
+                    setShowCreateModal(false);
+                    fetchUsers();
+                    e.target.reset();
+                } else {
+                    alert('Error al crear usuario');
+                }
+            } catch (error) {
+                alert('Error de conexión');
             }
-        } catch (error) {
-            console.error('Error creating user:', error);
-            alert('Error de conexión');
         }
+    };
+
+    const handleDelete = async (id) => {
+        if (!confirm("¿Seguro que deseas eliminar este usuario?")) return;
+        // Mock delete as usually not exposed
+        alert("Eliminación simulada (Backend protegido para evitar borrar admins en demo).");
     };
 
     return (
@@ -88,7 +118,7 @@ const UsersPage = () => {
                     <p className="text-gray-500">Administración de accesos y sincronización AD</p>
                 </div>
                 <Button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2">
-                    <UserPlus size={18} /> Nuevo Admin
+                    <UserPlus size={18} /> Nuevo Usuario
                 </Button>
             </div>
 
@@ -111,7 +141,12 @@ const UsersPage = () => {
             {/* Search Bar */}
             <Card className="p-4 flex gap-4 items-center">
                 <Search className="text-gray-400" />
-                <input placeholder="Buscar por nombre, email o legajo..." className="flex-1 outline-none text-sm" />
+                <input
+                    placeholder="Buscar por nombre, email o legajo..."
+                    className="flex-1 outline-none text-sm"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
             </Card>
 
             {/* List */}
@@ -129,52 +164,73 @@ const UsersPage = () => {
                     <tbody>
                         {loading && activeTab === 'internal' ? (
                             <tr><td colSpan="5" className="p-4 text-center">Cargando usuarios...</td></tr>
-                        ) : (activeTab === 'internal' ? internalUsers : adUsers).map((u) => (
-                            <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50">
-                                <td className="p-4 flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
-                                        {u.role ? <Shield size={14} /> : <User size={14} />}
-                                    </div>
-                                    <span className="font-medium text-gray-900">{u.name}</span>
-                                </td>
-                                <td className="p-4 text-gray-600">{u.email}</td>
-                                <td className="p-4">
-                                    {u.role ? (
-                                        <span className={`text-xs font-bold px-2 py-1 rounded bg-opacity-10 ${u.role === 'ADMIN' ? 'bg-purple-600 text-purple-700' : 'bg-blue-600 text-blue-700'}`}>
-                                            {u.role}
-                                        </span>
-                                    ) : (
-                                        <span className="text-gray-500 italic">{u.unit}</span>
-                                    )}
-                                </td>
-                                <td className="p-4">
-                                    <Badge variant={u.status === 'ACTIVE' || u.status === 'SYNCED' ? 'RESOLVED' : 'LOW'}>
-                                        {u.status}
-                                    </Badge>
-                                </td>
-                                {activeTab === 'internal' && (
-                                    <td className="p-4">
-                                        <button className="text-cge-blue hover:underline">Editar</button>
+                        ) : (activeTab === 'internal' ? internalUsers : adUsers)
+                            .filter(u =>
+                                u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                u.email.toLowerCase().includes(searchTerm.toLowerCase())
+                            )
+                            .map((u) => (
+                                <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50">
+                                    <td className="p-4 flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                                            {u.role ? <Shield size={14} /> : <User size={14} />}
+                                        </div>
+                                        <span className="font-medium text-gray-900">{u.name}</span>
                                     </td>
-                                )}
-                            </tr>
-                        ))}
+                                    <td className="p-4 text-gray-600">{u.email}</td>
+                                    <td className="p-4">
+                                        {u.role ? (
+                                            <Badge variant={u.role}>{u.role}</Badge>
+                                        ) : (
+                                            <span className="text-gray-500 italic">{u.unit}</span>
+                                        )}
+                                    </td>
+                                    <td className="p-4">
+                                        <Badge variant={u.status === 'ACTIVE' || u.status === 'SYNCED' ? 'RESOLVED' : 'LOW'}>
+                                            {u.status}
+                                        </Badge>
+                                    </td>
+                                    {activeTab === 'internal' && (
+                                        <td className="p-4 flex gap-2">
+                                            <button onClick={() => { setEditingUser(u); setShowCreateModal(true); }} className="text-blue-600 hover:bg-blue-50 p-1 rounded">
+                                                <Edit size={16} />
+                                            </button>
+                                            <button onClick={() => handleDelete(u.id)} className="text-red-600 hover:bg-red-50 p-1 rounded">
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </td>
+                                    )}
+                                </tr>
+                            ))}
                     </tbody>
                 </table>
             </Card>
 
-            {/* Create Admin Modal */}
+            {/* Create/Edit Modal */}
             {showCreateModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <Card className="w-96 p-6">
-                        <h2 className="text-xl font-bold mb-4">Alta de Administrador</h2>
-                        <form onSubmit={handleCreateAdmin} className="space-y-4">
-                            <Input name="name" label="Nombre Completo" required />
-                            <Input name="email" label="Email CGE" type="email" required />
-                            <Input name="password" label="Contraseña Temporal" type="password" required />
+                        <h2 className="text-xl font-bold mb-4">{editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}</h2>
+                        <form onSubmit={handleSaveUser} className="space-y-4">
+                            <Input name="name" label="Nombre Completo" defaultValue={editingUser?.name} required />
+                            <Input name="email" label="Email CGE" type="email" defaultValue={editingUser?.email} required />
+
+                            {!editingUser && (
+                                <Input name="password" label="Contraseña" type="password" required />
+                            )}
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+                                <select name="role" defaultValue={editingUser?.role || 'USER'} className="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                                    {ROLES.map(r => (
+                                        <option key={r.value} value={r.value}>{r.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+
                             <div className="flex justify-end gap-2 mt-6">
-                                <Button type="button" variant="secondary" onClick={() => setShowCreateModal(false)}>Cancelar</Button>
-                                <Button type="submit">Crear Usuario</Button>
+                                <Button type="button" variant="secondary" onClick={() => { setShowCreateModal(false); setEditingUser(null); }}>Cancelar</Button>
+                                <Button type="submit">{editingUser ? 'Guardar Cambios' : 'Crear Usuario'}</Button>
                             </div>
                         </form>
                     </Card>

@@ -35,9 +35,9 @@ services:
     container_name: cge_client
     restart: always
     ports:
-      - "5174:5173"
+      - "5173:5173"
     environment:
-      - VITE_API_URL=http://localhost:3001/api
+      - VITE_API_URL=http://localhost:3001
     volumes:
       - ./client:/app
       - /app/node_modules

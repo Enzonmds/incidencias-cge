@@ -7,7 +7,10 @@ import authRoutes from './routes/authRoutes.js';
 import ticketRoutes from './routes/ticketRoutes.js';
 import webhookRoutes from './routes/webhookRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import reportRoutes from './routes/reportRoutes.js';
 import { seedDatabase } from './seed.js';
+
+import { checkSLA } from './services/slaService.js';
 
 dotenv.config();
 
@@ -21,6 +24,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Health Check
 app.get('/', (req, res) => {
@@ -35,10 +39,18 @@ const startServer = async () => {
 
         // Sync models (force: false ensures we don't drop tables on restart)
         // In production, use migrations instead of sync
-        await sequelize.sync({ force: false });
+        await sequelize.sync({ alter: true });
         console.log('Database synced.');
 
         await seedDatabase();
+
+        // Start SLA Monitor
+        setInterval(() => {
+            checkSLA();
+        }, 60000); // Check every minute
+
+        // Run once immediately on startup for demo
+        checkSLA();
 
         app.listen(PORT, () => {
             console.log(`Server running on port ${PORT}`);

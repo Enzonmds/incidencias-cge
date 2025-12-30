@@ -2,16 +2,24 @@ import { Ticket, User, Message } from '../models/index.js';
 
 export const createTicket = async (req, res) => {
     try {
-        const { title, description, priority, created_by_user_id } = req.body;
-        // In a real app, created_by_user_id might come from the logged in user (req.user.id)
-        // For now we allow passing it to simulate creation by different users or via bot
+        const { title, description, priority, category, created_by_user_id, dni_solicitante, telefono_contacto } = req.body;
+
+        // Strict Validation for Users
+        if (req.user?.role === 'USER') { // Implicit check, assuming middleware populates req.user
+            if (!dni_solicitante || !telefono_contacto) {
+                return res.status(400).json({ message: 'DNI y Teléfono son obligatorios.' });
+            }
+        }
 
         const ticket = await Ticket.create({
             title,
             description,
-            priority,
-            created_by_user_id: created_by_user_id || req.user?.id, // Fallback to auth user
-            status: 'OPEN'
+            priority: priority || 'MEDIUM',
+            category: category || 'OTHER', // Default, AH updates this
+            dni_solicitante,
+            telefono_contacto,
+            created_by_user_id: created_by_user_id || req.user?.id,
+            status: 'PENDIENTE_VALIDACION'
         });
 
         res.status(201).json(ticket);
@@ -23,10 +31,11 @@ export const createTicket = async (req, res) => {
 
 export const getTickets = async (req, res) => {
     try {
-        const { status, assigned_agent_id } = req.query;
+        const { status, assigned_agent_id, cola_atencion } = req.query;
         const where = {};
         if (status) where.status = status;
         if (assigned_agent_id) where.assigned_agent_id = assigned_agent_id;
+        if (cola_atencion) where.cola_atencion = cola_atencion;
 
         const tickets = await Ticket.findAll({
             where,
@@ -51,7 +60,7 @@ export const getTicketById = async (req, res) => {
             include: [
                 { model: User, as: 'creator', attributes: ['id', 'name', 'email'] },
                 { model: User, as: 'assignee', attributes: ['id', 'name', 'email'] },
-                { model: Message, as: 'messages', include: [{ model: User, attributes: ['id', 'name'] }] }
+                { model: Message, as: 'messages', include: [{ model: User, as: 'sender', attributes: ['id', 'name'] }] }
             ]
         });
 
@@ -67,13 +76,15 @@ export const getTicketById = async (req, res) => {
 export const updateTicket = async (req, res) => {
     try {
         const { id } = req.params;
-        const { status, priority, assigned_agent_id } = req.body;
+        const { status, priority, assigned_agent_id, category, cola_atencion } = req.body;
 
         const ticket = await Ticket.findByPk(id);
         if (!ticket) return res.status(404).json({ message: 'Ticket not found' });
 
         if (status) ticket.status = status;
         if (priority) ticket.priority = priority;
+        if (category) ticket.category = category;
+        if (cola_atencion) ticket.cola_atencion = cola_atencion;
         if (assigned_agent_id) ticket.assigned_agent_id = assigned_agent_id;
 
         await ticket.save();

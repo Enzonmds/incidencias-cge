@@ -10,7 +10,7 @@ router.use(authenticateToken); // Protect all ticket routes
 router.post('/', createTicket);
 router.get('/', getTickets);
 router.get('/:id', getTicketById);
-router.patch('/:id', updateTicket);
+router.put('/:id', updateTicket);
 router.post('/:id/messages', addMessageToTicket);
 
 export default router;
