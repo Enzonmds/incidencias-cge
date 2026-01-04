@@ -44,53 +44,84 @@ export const handleWhatsAppWebhook = async (req, res) => {
                 // 1. Find or Create User by Phone
                 let user = await User.findOne({ where: { phone: from } });
 
+                // Construct Legal Link
+                const frontendUrl = process.env.FRONTEND_URL || 'https://consultas.cge.mil.ar';
+                const legalLink = `${frontendUrl}/legal`;
+
                 if (!user) {
-                    // Start as Guest in MENU mode
+                    // Start as Guest in WAITING_DNI mode
                     user = await User.create({
                         name: name,
                         email: `guest_${from}@cge.mil.ar`,
                         password_hash: 'guest123',
                         role: 'USER',
                         phone: from,
-                        whatsapp_step: 'MENU'
+                        whatsapp_step: 'WAITING_DNI' // First Step
                     });
+                    // Send Welcome + Legal + DNI Request
+                    await sendWhatsAppMessage(from, `👋 Hola! Soy el Asistente Virtual de CGE.\n\n⚠️ Antes de continuar, por favor lea nuestro Aviso Legal:\n🔗 ${legalLink}\n\nPara iniciar, por favor ingrese su número de DNI (sin puntos):`);
+                    return res.sendStatus(200);
                 }
 
                 // --- DEBUG COMMAND: /reset ---
                 if (messageBody.trim().toLowerCase() === '/reset') {
-                    user.whatsapp_step = 'MENU';
+                    user.whatsapp_step = 'WAITING_DNI';
                     user.whatsapp_temp_role = null;
+                    user.dni = null; // Clear DNI binding if it was only partial
                     await user.save();
-                    await sendWhatsAppMessage(from, `🔄 Sesión reiniciada. Test mode active.`);
-                    // Fall through to switch to show menu immediately
+                    await sendWhatsAppMessage(from, `🔄 Sesión reiniciada.\n\nPor favor ingrese su número de DNI (sin puntos):`);
+                    return res.sendStatus(200);
                 }
 
                 // 2. State Machine
                 switch (user.whatsapp_step) {
-                    case 'MENU':
-                        // Show Menu
-                        await sendWhatsAppMessage(from, `👋 Bienvenido a la Ticketera CGE. Por favor, seleccione su perfil:\n\n1️⃣ Personal Militar\n2️⃣ Agente Civil\n3️⃣ Entidad Externa\n4️⃣ Usuario No Registrado`);
-                        user.whatsapp_step = 'WAITING_SELECTION';
-                        await user.save();
+                    case 'MENU': // Legacy / Fallback
+                    case 'WAITING_DNI':
+                        const dniInput = messageBody.replace(/\D/g, ''); // Remove non-digits
+                        if (dniInput.length < 6) {
+                            await sendWhatsAppMessage(from, `❌ DNI inválido. Por favor ingrese solo números.`);
+                            break;
+                        }
+
+                        // Check if DNI exists in DB (Real User)
+                        const existingUser = await User.findOne({ where: { dni: dniInput } });
+
+                        if (existingUser) {
+                            // CASE A: User Exists -> Auth Logic
+                            // Generate Magic Link for THAT user (we use current guest session to facilitate the link)
+                            const token = jwt.sign(
+                                { phone: from, guestId: user.id, targetUserId: existingUser.id },
+                                process.env.JWT_SECRET,
+                                { expiresIn: '1h' }
+                            );
+                            const link = `${frontendUrl}/verify-whatsapp?token=${token}`;
+
+                            await sendWhatsAppMessage(from, `✅ Hola ${existingUser.name}. Te encontramos en el sistema.\n\n🔐 Por seguridad, por favor valida tu identidad en este enlace:\n🔗 ${link}`);
+
+                            user.whatsapp_step = 'WAITING_LOGIN';
+                            await user.save();
+
+                        } else {
+                            // CASE B: User Does NOT Exist -> Profile Menu
+                            user.dni = dniInput; // temporarily store DNI (optional, or just proceed)
+                            user.whatsapp_step = 'WAITING_SELECTION';
+                            await user.save();
+
+                            await sendWhatsAppMessage(from, `👤 No te encontramos registrado con ese DNI.\n\nPor favor, selecciona tu perfil:\n\n1️⃣ Personal Militar\n2️⃣ Agente Civil\n3️⃣ Entidad Externa\n4️⃣ Usuario No Registrado`);
+                        }
                         break;
 
                     case 'WAITING_SELECTION':
                         const selection = messageBody.trim();
                         if (selection === '1' || selection.includes('Militar')) {
-                            // Generate Magic Link
-                            const token = jwt.sign(
-                                { phone: from, guestId: user.id },
-                                process.env.JWT_SECRET,
-                                { expiresIn: '1h' }
-                            );
-                            const frontendUrl = process.env.FRONTEND_URL;
-                            if (!frontendUrl) console.warn('WARNING: FRONTEND_URL is not defined in .env');
-                            const link = `${frontendUrl}/verify-whatsapp?token=${token}`;
-
-                            await sendWhatsAppMessage(from, `🎖️ Personal Militar: Para validar su identidad y obtener prioridad ALTA, por favor ingrese al siguiente enlace:\n\n🔗 ${link}\n\nUna vez validado, podrá enviar su consulta.`);
-
-                            user.whatsapp_step = 'WAITING_LOGIN';
-                            user.role = 'USER'; // Will be updated to match AD user later
+                            // If they selected Militar but weren't found by DNI, maybe they need to register or we treat as Guest Militar?
+                            // Flow says: "comprobará si es o no usuario... si no es usuario le preguntará... militar"
+                            // So we treat as Guest Militar (unverified) or ask them to register?
+                            // Let's treat as Guest High Priority for now, or ask to contact admin if strict.
+                            // Assuming Guest Flow for now.
+                            user.whatsapp_temp_role = 'MILITAR_NO_VERIFICADO';
+                            user.whatsapp_step = 'GUEST_FLOW';
+                            await sendWhatsAppMessage(from, `🎖️ Entendido. Por favor describa su consulta.`);
                         } else if (['2', '3', '4'].includes(selection)) {
                             // Guest flow
                             const roles = { '2': 'CIVIL', '3': 'ENTIDAD', '4': 'NO_REGISTRADO' };
@@ -103,7 +134,14 @@ export const handleWhatsAppWebhook = async (req, res) => {
                         await user.save();
                         break;
 
+                    case 'WAITING_LOGIN':
+                        await sendWhatsAppMessage(from, `⏳ Estamos esperando que valides tu identidad en el enlace enviado.`);
+                        break;
+
                     case 'ACTIVE_SESSION':
+                    // ... (Existing Active Session Logic) same as before but maybe greeting check
+                    // If logic below handles ticket creation, we just fall through or copy logic.
+                    // Merging logic below:
                     case 'GUEST_FLOW':
                         // 3. Find Open Ticket Logic (Existing)
                         let ticket = await Ticket.findOne({
@@ -144,7 +182,8 @@ export const handleWhatsAppWebhook = async (req, res) => {
                                 priority: priority,
                                 status: 'OPEN',
                                 created_by_user_id: user.id,
-                                channel: 'WHATSAPP'
+                                channel: 'WHATSAPP',
+                                dni_solicitante: user.dni || 'No provisto' // Ensure we capture DNI if available
                             });
 
                             await Message.create({
@@ -159,13 +198,11 @@ export const handleWhatsAppWebhook = async (req, res) => {
                         break;
 
                     default:
-                        // Should not happen, reset to MENU
-                        user.whatsapp_step = 'MENU';
+                        user.whatsapp_step = 'WAITING_DNI';
                         await user.save();
-                        await sendWhatsAppMessage(from, `Reiniciando menú... Escriba 'Hola' de nuevo.`);
+                        await sendWhatsAppMessage(from, `Reiniciando... Por favor ingrese su DNI.`);
                         break;
                 }
-                // --- LOGIC END ---
             }
             res.sendStatus(200);
         } else {
