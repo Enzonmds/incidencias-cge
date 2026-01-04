@@ -13,6 +13,11 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cge_admin} -d ${POSTGRES_DB:-cge_incidencias}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   server:
     build: ./server
@@ -30,7 +35,8 @@ services:
       - FRONTEND_URL=${FRONTEND_URL:-https://consultas.cge.mil.ar}
       - ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     volumes:
       - ./server:/app
       - /app/node_modules
