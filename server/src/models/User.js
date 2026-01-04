@@ -24,12 +24,28 @@ const User = sequelize.define('User', {
         allowNull: false,
     },
     role: {
-        type: DataTypes.ENUM('ADMIN', 'AGENT', 'USER', 'HUMAN_ATTENTION', 'TECHNICAL_SUPPORT'),
+        type: DataTypes.ENUM('ADMIN', 'AGENT', 'USER', 'HUMAN_ATTENTION', 'TECHNICAL_SUPPORT', 'MONITOR', 'JEFE', 'SUBDIRECTOR'),
         defaultValue: 'USER',
     },
     phone: {
         type: DataTypes.STRING,
         allowNull: true, // Used for WhatsApp mapping
+    },
+
+    department: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        // E.g., 'SISTEMAS', 'TESORERIA', 'SAF', etc.
+    },
+
+    // --- WhatsApp Bot State Machine ---
+    whatsapp_step: {
+        type: DataTypes.ENUM('MENU', 'WAITING_SELECTION', 'WAITING_LOGIN', 'ACTIVE_SESSION', 'GUEST_FLOW'),
+        defaultValue: 'MENU',
+    },
+    whatsapp_temp_role: {
+        type: DataTypes.STRING, // 'CIVIL', 'ENTIDAD', 'NO_REGISTRADO', etc.
+        allowNull: true,
     },
 });
 

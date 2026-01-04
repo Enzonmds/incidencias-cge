@@ -1,9 +1,10 @@
 import express from 'express';
-import { handleWhatsAppWebhook } from '../controllers/webhookController.js';
+import { handleWhatsAppWebhook, verifyWebhook } from '../controllers/webhookController.js';
 
 const router = express.Router();
 
-// Twilio sends POST requests
-router.post('/whatsapp', express.urlencoded({ extended: false }), handleWhatsAppWebhook);
+// Meta sends GET for verification and POST for messages
+router.get('/whatsapp', verifyWebhook);
+router.post('/whatsapp', handleWhatsAppWebhook);
 
 export default router;

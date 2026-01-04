@@ -13,6 +13,8 @@ import UsersPage from './pages/UsersPage';
 import ReportsPage from './pages/ReportsPage';
 import TriagePage from './pages/TriagePage';
 import TechSupportPage from './pages/TechSupportPage';
+import SystemFlowPage from './pages/SystemFlowPage';
+import VerifyWhatsAppPage from './pages/VerifyWhatsAppPage';
 
 function App() {
   return (
@@ -20,6 +22,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/verify-whatsapp" element={<VerifyWhatsAppPage />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<MainLayout />}>
@@ -30,6 +33,7 @@ function App() {
               <Route path="support" element={<TechSupportPage />} />
               <Route path="users" element={<UsersPage />} />
               <Route path="reports" element={<ReportsPage />} />
+              <Route path="system-flow" element={<SystemFlowPage />} />
             </Route>
           </Route>
 

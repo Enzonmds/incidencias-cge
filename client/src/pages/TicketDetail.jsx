@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
-import { User, Send, ArrowLeft } from 'lucide-react';
+import { User, Send, ArrowLeft, MessageCircle, Mail, Wrench } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 
 const TicketDetail = () => {
@@ -110,7 +110,7 @@ const TicketDetail = () => {
                 </div>
                 <div className="flex gap-2">
                     {/* Actions only for Agents/Admins */}
-                    {(user?.role === 'ADMIN' || user?.role === 'AGENT') && (
+                    {['ADMIN', 'AGENT', 'TECHNICAL_SUPPORT'].includes(user?.role) && (
                         <>
                             {!ticket.assigned_agent_id && (
                                 <Button variant="secondary" onClick={() => handleAction('ASSIGN_ME')}>Asignarme</Button>
@@ -149,21 +149,23 @@ const TicketDetail = () => {
                             ))}
                         </div>
 
-                        {/* Reply Box */}
-                        <div className="border-t border-gray-100 pt-4 mt-auto">
-                            <textarea
-                                className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-cge-blue outline-none resize-none transition-shadow"
-                                rows="3"
-                                placeholder="Escribí una respuesta..."
-                                value={messageInput}
-                                onChange={(e) => setMessageInput(e.target.value)}
-                            ></textarea>
-                            <div className="flex justify-end mt-2">
-                                <Button className="flex items-center gap-2" onClick={handleSendMessage}>
-                                    <Send size={16} /> Enviar Respuesta
-                                </Button>
+                        {/* Reply Box (Hidden for Monitor) */}
+                        {user?.role !== 'MONITOR' && (
+                            <div className="border-t border-gray-100 pt-4 mt-auto">
+                                <textarea
+                                    className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-cge-blue outline-none resize-none transition-shadow"
+                                    rows="3"
+                                    placeholder="Escribí una respuesta..."
+                                    value={messageInput}
+                                    onChange={(e) => setMessageInput(e.target.value)}
+                                ></textarea>
+                                <div className="flex justify-end mt-2">
+                                    <Button className="flex items-center gap-2" onClick={handleSendMessage}>
+                                        <Send size={16} /> Enviar Respuesta
+                                    </Button>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </Card>
                 </div>
 
@@ -175,12 +177,28 @@ const TicketDetail = () => {
                             <div>
                                 <span className="text-gray-500 block text-xs uppercase tracking-wider mb-1">Solicitante</span>
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center border border-gray-200">
-                                        <User size={16} className="text-gray-500" />
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${ticket.channel === 'WHATSAPP' ? 'bg-green-100 border-green-200 text-green-600' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>
+                                        {ticket.channel === 'WHATSAPP' ? <MessageCircle size={16} /> : (ticket.channel === 'EMAIL' ? <Mail size={16} /> : <User size={16} />)}
                                     </div>
-                                    <span className="font-medium text-cge-sidebar">{ticket.creator?.name || 'Desconocido'}</span>
+                                    <div>
+                                        <p className="font-medium text-cge-sidebar">
+                                            {ticket.solicitante_grado ? `${ticket.solicitante_grado} ` : ''}
+                                            {ticket.solicitante_nombre_completo || ticket.creator?.name || 'Desconocido'}
+                                        </p>
+                                        {ticket.unidad_codigo && (
+                                            <Badge variant="outline" className="text-[10px] px-1 py-0 border-gray-300 text-gray-500 mt-0.5 inline-block">
+                                                {ticket.unidad_codigo}
+                                            </Badge>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="text-xs text-gray-400 mt-1 ml-11">{ticket.creator?.email}</div>
+                                <div className="text-xs text-gray-400 mt-2 ml-11 flex flex-col gap-1">
+                                    <span>{ticket.solicitante_email || ticket.creator?.email}</span>
+                                    <div className="flex items-center gap-1">
+                                        <span className="font-semibold text-gray-500">Canal:</span>
+                                        <span className="capitalize">{ticket.channel?.toLowerCase() || 'Web'}</span>
+                                    </div>
+                                </div>
                             </div>
                             <div>
                                 <span className="text-gray-500 block text-xs uppercase tracking-wider mb-1">Responsable</span>
@@ -196,6 +214,28 @@ const TicketDetail = () => {
                             </div>
                         </div>
                     </Card>
+
+                    {/* Quick Tools (Agents Only) */}
+                    {(user?.role === 'ADMIN' || user?.role === 'TECHNICAL_SUPPORT' || user?.role === 'HUMAN_ATTENTION') && (
+                        <Card>
+                            <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2 flex items-center gap-2">
+                                <Wrench size={16} /> Herramientas Rápidas
+                            </h3>
+                            <div className="space-y-2">
+                                <a
+                                    href="http://mlh.cge.mil.ar"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block w-full text-center bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium py-2 rounded-lg transition-colors border border-blue-200 text-sm"
+                                >
+                                    Acceso a MLH
+                                </a>
+                                <p className="text-xs text-gray-400 text-center italic">
+                                    Soluciones personalizadas según departamento
+                                </p>
+                            </div>
+                        </Card>
+                    )}
                 </div>
             </div>
         </div>

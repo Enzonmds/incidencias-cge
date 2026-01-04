@@ -24,6 +24,10 @@ services:
       - DATABASE_URL=postgres://cge_admin:cge_password_secure@db:5432/cge_incidencias
       - JWT_SECRET=super_secret_key_cge_military
       - NODE_ENV=development
+      - WHATSAPP_TOKEN=EAAMFooz0AzEBQSkAM1iXEPNYGgzCMNYjPQIicWjhCKUu54MwMKIlOZCZAkIM2pxfVaSzIu4B3VksyZBklBHrrW1gIgl8f1vyQ461Sgjabr8jNSeEu3FxQTTDzEBNtxijCgjf8bsoD66w3ShNkZAQNE0JaitFZCLbRG2UZAK9nimR1DiBeKGXOOQqkEHRNHu0LkShFR6bzlPGdW7wTfZCaOiTlLCEVpuWhRs09ffp7mDAhFdifT4VSvX3VCknG5pL3USxcBAC3vzZAuohTgDeagrmvpx8hqpnGtBdRQZDZD
+      - PHONE_NUMBER_ID=949588524901447
+      - WEBHOOK_VERIFY_TOKEN=cge_secret_123
+      - FRONTEND_URL=http://10.16.80.50:5174
     depends_on:
       - db
     volumes:
@@ -35,9 +39,9 @@ services:
     container_name: cge_client
     restart: always
     ports:
-      - "5173:5173"
+      - "5174:5173"
     environment:
-      - VITE_API_URL=http://localhost:3001
+      - VITE_API_URL=http://10.16.80.50:3001
     volumes:
       - ./client:/app
       - /app/node_modules

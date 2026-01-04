@@ -81,6 +81,13 @@ export const updateTicket = async (req, res) => {
         const ticket = await Ticket.findByPk(id);
         if (!ticket) return res.status(404).json({ message: 'Ticket not found' });
 
+        // Enforce Departmental Isolation for Agents
+        if (req.user.role === 'TECHNICAL_SUPPORT' && assigned_agent_id) {
+            if (ticket.cola_atencion !== req.user.department) {
+                return res.status(403).json({ message: `No tienes permisos para tickets de ${ticket.cola_atencion}` });
+            }
+        }
+
         if (status) ticket.status = status;
         if (priority) ticket.priority = priority;
         if (category) ticket.category = category;

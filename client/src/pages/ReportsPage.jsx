@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import Card from '../components/ui/Card';
+import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import { BarChart, Clock, CheckCircle, AlertTriangle, FileText, Download } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
@@ -253,28 +254,30 @@ const ReportsPage = () => {
             <div className="print:hidden mt-8">
                 <h2 className="text-lg font-bold text-gray-800 mb-4">Historial de Reportes Generados</h2>
                 <Card className="overflow-hidden">
-                    <table className="w-full text-left text-sm">
-                        <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
-                            <tr>
-                                <th className="p-4">Código Referencia</th>
-                                <th className="p-4">Generado Por</th>
-                                <th className="p-4">Tipo</th>
-                                <th className="p-4">Fecha</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {reportLogs.length === 0 ? (
-                                <tr><td colSpan="4" className="p-4 text-center text-gray-500">No hay reportes generados recientemente.</td></tr>
-                            ) : reportLogs.map((log) => (
-                                <tr key={log.id} className="border-b border-gray-50">
-                                    <td className="p-4 font-mono font-medium text-cge-blue">{log.reference_code}</td>
-                                    <td className="p-4">{log.generator?.name || 'Desconocido'}</td>
-                                    <td className="p-4"><Badge variant="secondary">{log.type}</Badge></td>
-                                    <td className="p-4 text-gray-500">{new Date(log.createdAt).toLocaleString()}</td>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm min-w-[600px]">
+                            <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
+                                <tr>
+                                    <th className="p-4">Código Referencia</th>
+                                    <th className="p-4">Generado Por</th>
+                                    <th className="p-4">Tipo</th>
+                                    <th className="p-4">Fecha</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {reportLogs.length === 0 ? (
+                                    <tr><td colSpan="4" className="p-4 text-center text-gray-500">No hay reportes generados recientemente.</td></tr>
+                                ) : reportLogs.map((log) => (
+                                    <tr key={log.id} className="border-b border-gray-50">
+                                        <td className="p-4 font-mono font-medium text-cge-blue">{log.reference_code}</td>
+                                        <td className="p-4">{log.generator?.name || 'Desconocido'}</td>
+                                        <td className="p-4"><Badge variant="secondary">{log.type}</Badge></td>
+                                        <td className="p-4 text-gray-500">{new Date(log.createdAt).toLocaleString()}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </Card>
             </div>
         </div>

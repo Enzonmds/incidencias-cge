@@ -35,6 +35,28 @@ const Ticket = sequelize.define('Ticket', {
         type: DataTypes.ENUM('LOW', 'MEDIUM', 'HIGH', 'CRITICAL'),
         defaultValue: 'MEDIUM',
     },
+    // WhatsApp / External Sources Fields
+    solicitante_grado: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    unidad_codigo: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    solicitante_nombre_completo: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    solicitante_email: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    channel: {
+        type: DataTypes.ENUM('WEB', 'WHATSAPP', 'EMAIL'),
+        defaultValue: 'WEB',
+    },
+
     category: {
         type: DataTypes.ENUM(
             'HABERES', 'ENTIDADES', 'DESCUENTOS', // Gastos en Personal

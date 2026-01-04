@@ -40,7 +40,7 @@ const startServer = async () => {
         // Sync models (force: false ensures we don't drop tables on restart)
         // In production, use migrations instead of sync
         await sequelize.sync({ alter: true });
-        console.log('Database synced.');
+        console.log('Database connected and synced');
 
         await seedDatabase();
 
