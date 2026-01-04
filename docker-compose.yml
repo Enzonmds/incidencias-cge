@@ -6,9 +6,9 @@ services:
     container_name: cge_postgres
     restart: always
     environment:
-      POSTGRES_USER: cge_admin
-      POSTGRES_PASSWORD: cge_password_secure
-      POSTGRES_DB: cge_incidencias
+      POSTGRES_USER: ${POSTGRES_USER:-cge_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-cge_incidencias}
     ports:
       - "5433:5432"
     volumes:
@@ -21,13 +21,14 @@ services:
     ports:
       - "3001:3000"
     environment:
-      - DATABASE_URL=postgres://cge_admin:cge_password_secure@db:5432/cge_incidencias
-      - JWT_SECRET=super_secret_key_cge_military
-      - NODE_ENV=development
-      - WHATSAPP_TOKEN=EAAMFooz0AzEBQSkAM1iXEPNYGgzCMNYjPQIicWjhCKUu54MwMKIlOZCZAkIM2pxfVaSzIu4B3VksyZBklBHrrW1gIgl8f1vyQ461Sgjabr8jNSeEu3FxQTTDzEBNtxijCgjf8bsoD66w3ShNkZAQNE0JaitFZCLbRG2UZAK9nimR1DiBeKGXOOQqkEHRNHu0LkShFR6bzlPGdW7wTfZCaOiTlLCEVpuWhRs09ffp7mDAhFdifT4VSvX3VCknG5pL3USxcBAC3vzZAuohTgDeagrmvpx8hqpnGtBdRQZDZD
-      - PHONE_NUMBER_ID=949588524901447
-      - WEBHOOK_VERIFY_TOKEN=cge_secret_123
-      - FRONTEND_URL=http://10.16.80.50:5174
+      - DATABASE_URL=postgres://${POSTGRES_USER:-cge_admin}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-cge_incidencias}
+      - JWT_SECRET=${JWT_SECRET}
+      - NODE_ENV=production
+      - WHATSAPP_TOKEN=${WHATSAPP_TOKEN}
+      - PHONE_NUMBER_ID=${PHONE_NUMBER_ID}
+      - WEBHOOK_VERIFY_TOKEN=${WEBHOOK_VERIFY_TOKEN}
+      - FRONTEND_URL=${FRONTEND_URL:-https://consultas.cge.mil.ar}
+      - ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD}
     depends_on:
       - db
     volumes:
@@ -41,7 +42,7 @@ services:
     ports:
       - "5174:5173"
     environment:
-      - VITE_API_URL=http://10.16.80.50:3001
+      - VITE_API_URL=${VITE_API_URL:-https://consultas.cge.mil.ar}
     volumes:
       - ./client:/app
       - /app/node_modules

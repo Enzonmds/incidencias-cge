@@ -3,7 +3,10 @@ import { User, Ticket } from './models/index.js';
 
 export const seedDatabase = async () => {
     try {
-        const passwordHash = await bcrypt.hash('123456', 10);
+        const initialPassword = process.env.ADMIN_INITIAL_PASSWORD || '123456';
+        const passwordHash = await bcrypt.hash(initialPassword, 10);
+
+        console.log(`🔐 Seeding Users with Initial Password: ${initialPassword}`);
 
         // --- 1. USERS ---
         // Admin
