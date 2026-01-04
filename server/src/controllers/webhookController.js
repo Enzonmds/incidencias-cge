@@ -83,7 +83,7 @@ export const handleWhatsAppWebhook = async (req, res) => {
                                 process.env.JWT_SECRET,
                                 { expiresIn: '1h' }
                             );
-                            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+                            const frontendUrl = process.env.FRONTEND_URL || 'https://consultas.cge.mil.ar';
                             const link = `${frontendUrl}/verify-whatsapp?token=${token}`;
 
                             await sendWhatsAppMessage(from, `🎖️ Personal Militar: Para validar su identidad y obtener prioridad ALTA, por favor ingrese al siguiente enlace:\n\n🔗 ${link}\n\nUna vez validado, podrá enviar su consulta.`);
