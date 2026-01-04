@@ -33,6 +33,7 @@ services:
       - PHONE_NUMBER_ID=${PHONE_NUMBER_ID}
       - WEBHOOK_VERIFY_TOKEN=${WEBHOOK_VERIFY_TOKEN}
       - FRONTEND_URL=${FRONTEND_URL:-https://consultas.cge.mil.ar}
+      - API_URL=${VITE_API_URL:-https://consultas.cge.mil.ar}
       - ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD}
     depends_on:
       db:

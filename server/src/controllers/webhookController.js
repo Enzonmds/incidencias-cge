@@ -83,7 +83,8 @@ export const handleWhatsAppWebhook = async (req, res) => {
                                 process.env.JWT_SECRET,
                                 { expiresIn: '1h' }
                             );
-                            const frontendUrl = process.env.FRONTEND_URL || 'https://consultas.cge.mil.ar';
+                            const frontendUrl = process.env.FRONTEND_URL;
+                            if (!frontendUrl) console.warn('WARNING: FRONTEND_URL is not defined in .env');
                             const link = `${frontendUrl}/verify-whatsapp?token=${token}`;
 
                             await sendWhatsAppMessage(from, `🎖️ Personal Militar: Para validar su identidad y obtener prioridad ALTA, por favor ingrese al siguiente enlace:\n\n🔗 ${link}\n\nUna vez validado, podrá enviar su consulta.`);
@@ -130,8 +131,12 @@ export const handleWhatsAppWebhook = async (req, res) => {
                             // Create New Ticket
                             // Determine Priority
                             let priority = 'LOW';
-                            if (user.whatsapp_temp_role === 'CIVIL') priority = 'MEDIUM';
-                            // Militar priority will be high when linked
+                            if (user.whatsapp_step === 'ACTIVE_SESSION') {
+                                priority = 'HIGH';
+                            } else if (user.whatsapp_temp_role === 'CIVIL') {
+                                priority = 'MEDIUM';
+                            }
+                            // Entidad / No Registrado -> LOW
 
                             ticket = await Ticket.create({
                                 title: `Consulta WhatsApp (${user.whatsapp_temp_role || 'User'})`,
