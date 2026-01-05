@@ -23,6 +23,7 @@ export const createUser = async (req, res) => {
         const passwordHash = await bcrypt.hash(password, 10);
         const newUser = await User.create({
             name,
+            dni: req.body.dni || null, // Accept DNI
             email,
             password_hash: passwordHash,
             role: role || 'USER'

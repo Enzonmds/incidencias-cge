@@ -27,17 +27,17 @@ const Login = () => {
         <div className="min-h-screen flex items-center justify-center bg-cge-sidebar">
             <Card className="w-full max-w-md p-8">
                 <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-cge-sidebar mb-2">Incidencias CGE</h1>
+                    <h1 className="text-3xl font-bold text-cge-sidebar mb-2">Consultas CGE</h1>
                     <p className="text-gray-500">Ingrese sus credenciales para continuar</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <Input
-                        label="Correo Electrónico"
-                        type="email"
+                        label="Email o DNI"
+                        type="text"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="admin@cge.mil.ar"
+                        placeholder="admin@cge.mil.ar o DNI"
                         required
                         autoFocus
                     />
@@ -62,7 +62,7 @@ const Login = () => {
                     </Button>
 
                     <div className="text-center text-xs text-gray-400 mt-4">
-                        Sistema de Gestión de Incidencias v1.0
+                        Sistema de Gestión de Consultas v1.0 - División Sistemas Informáticos - CGE
                     </div>
                 </form>
             </Card>

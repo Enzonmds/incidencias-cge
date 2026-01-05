@@ -19,7 +19,7 @@ const LegalPage = () => {
                     </p>
                     <hr className="my-6 border-gray-300" />
                     <p className="text-sm italic text-gray-500">
-                        CGE - Sistema de Incidencias
+                        División Sistemas Informáticos - CGE
                     </p>
                 </div>
             </div>

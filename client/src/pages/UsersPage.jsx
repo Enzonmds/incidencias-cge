@@ -65,6 +65,7 @@ const UsersPage = () => {
         e.preventDefault();
         const formData = {
             name: e.target.name.value,
+            dni: e.target.dni.value, // Added DNI
             email: e.target.email.value,
             role: e.target.role.value
         };
@@ -155,6 +156,7 @@ const UsersPage = () => {
                     <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
                         <tr>
                             <th className="p-4">Usuario</th>
+                            <th className="p-4">DNI</th>
                             <th className="p-4">Email</th>
                             <th className="p-4">Rol / Unidad</th>
                             <th className="p-4">Estado</th>
@@ -177,6 +179,7 @@ const UsersPage = () => {
                                         </div>
                                         <span className="font-medium text-gray-900">{u.name}</span>
                                     </td>
+                                    <td className="p-4 text-gray-600 font-mono">{u.dni || '-'}</td>
                                     <td className="p-4 text-gray-600">{u.email}</td>
                                     <td className="p-4">
                                         {u.role ? (
@@ -213,6 +216,7 @@ const UsersPage = () => {
                         <h2 className="text-xl font-bold mb-4">{editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}</h2>
                         <form onSubmit={handleSaveUser} className="space-y-4">
                             <Input name="name" label="Nombre Completo" defaultValue={editingUser?.name} required />
+                            <Input name="dni" label="DNI" defaultValue={editingUser?.dni} placeholder="Opcional" />
                             <Input name="email" label="Email CGE" type="email" defaultValue={editingUser?.email} required />
 
                             {!editingUser && (

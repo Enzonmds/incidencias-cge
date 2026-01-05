@@ -1,0 +1,17 @@
+import fs from 'fs';
+
+const updatedEnv = `POSTGRES_USER=cge_admin
+POSTGRES_PASSWORD=local_dev_password
+POSTGRES_DB=cge_incidencias
+JWT_SECRET=local_dev_secret_key
+ADMIN_INITIAL_PASSWORD=123456
+WHATSAPP_TOKEN=EAAMFooz0AzEBQcHG5kUXKuadYOvtPXw05vODn6MY5K58r4tzsdLT8bYpoC5DkC9YIBjOHt26QGwwAiiE0YSeZChMZCzushThG7wliTziLPXfD4kEkAAZAnaHUlZCujZCAekV8s5qnduTWtBWPwQXlW954D51buF6kHZBuDEyPHeohNTSZC6faBKiOxvoA5KYouhrarUkNaiHXLj6dCPF00IYawpe5jvQSg6AHRvLj7y0PiTZAP4F9Um5wgx4Mln37zsNvY56321XwS243wmt28gKuFEZCpKUhj7yh7wZDZD
+PHONE_NUMBER_ID=949588524901447
+WEBHOOK_VERIFY_TOKEN=cge_secret_123
+FRONTEND_URL=http://10.16.90.67:5174
+VITE_API_URL=http://10.16.90.67:3001
+API_URL=http://10.16.90.67:3001
+`;
+
+fs.writeFileSync('.env', updatedEnv);
+console.log('✅ .env updated successfully');

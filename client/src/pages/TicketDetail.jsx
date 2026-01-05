@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
-import { User, Send, ArrowLeft, MessageCircle, Mail, Wrench } from 'lucide-react';
+import { User, Send, ArrowLeft, MessageCircle, Mail, Wrench, AlertTriangle } from 'lucide-react'; // Added AlertTriangle
 import { AuthContext } from '../context/AuthContext';
 
 const TicketDetail = () => {
@@ -14,7 +14,11 @@ const TicketDetail = () => {
     const [loading, setLoading] = useState(true);
     const [messageInput, setMessageInput] = useState('');
 
-    const fetchTicket = async () => {
+    // Reject/Observe State
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectReason, setRejectReason] = useState('');
+
+    const fetchTicket = async (isBackground = false) => {
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tickets/${id}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -22,19 +26,28 @@ const TicketDetail = () => {
             if (response.ok) {
                 const data = await response.json();
                 setTicket(data);
-            } else {
+            } else if (!isBackground) {
                 alert('Ticket no encontrado');
                 navigate('/tickets');
             }
         } catch (error) {
             console.error('Error fetching ticket:', error);
         } finally {
-            setLoading(false);
+            if (!isBackground) setLoading(false);
         }
     };
 
     useEffect(() => {
-        if (token) fetchTicket();
+        if (token) {
+            fetchTicket(false);
+
+            // Poll every 3 seconds for real-time updates
+            const interval = setInterval(() => {
+                fetchTicket(true);
+            }, 3000);
+
+            return () => clearInterval(interval);
+        }
     }, [id, token]);
 
     const handleAction = async (actionType) => {
@@ -42,7 +55,7 @@ const TicketDetail = () => {
         if (actionType === 'ASSIGN_ME') {
             body = { assigned_agent_id: user.id, status: 'IN_PROGRESS' };
         } else if (actionType === 'CLOSE') {
-            body = { status: 'RESOLVED' };
+            body = { status: 'RESUELTO_TECNICO' };
         }
 
         try {
@@ -60,6 +73,31 @@ const TicketDetail = () => {
             }
         } catch (error) {
             console.error('Error updating ticket:', error);
+        }
+    };
+
+    const handleReject = async () => {
+        if (!rejectReason.trim()) return alert('Debe indicar un motivo.');
+        try {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tickets/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    status: 'RECHAZADO',
+                    rejectionReason: rejectReason
+                })
+            });
+
+            if (response.ok) {
+                setShowRejectModal(false);
+                setRejectReason('');
+                fetchTicket();
+            }
+        } catch (error) {
+            console.error('Error rejecting ticket:', error);
         }
     };
 
@@ -110,13 +148,24 @@ const TicketDetail = () => {
                 </div>
                 <div className="flex gap-2">
                     {/* Actions only for Agents/Admins */}
-                    {['ADMIN', 'AGENT', 'TECHNICAL_SUPPORT'].includes(user?.role) && (
+                    {['ADMIN', 'AGENT', 'TECHNICAL_SUPPORT', 'HUMAN_ATTENTION'].includes(user?.role) && (
                         <>
                             {!ticket.assigned_agent_id && (
                                 <Button variant="secondary" onClick={() => handleAction('ASSIGN_ME')}>Asignarme</Button>
                             )}
-                            {ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED' && (
-                                <Button variant="danger" onClick={() => handleAction('CLOSE')}>Cerrar Ticket</Button>
+
+                            {/* Rejection / Observation Button - Only for Triage (Pending Validation) */}
+                            {ticket.status === 'PENDIENTE_VALIDACION' && (
+                                <Button
+                                    className="bg-orange-500 hover:bg-orange-600 text-white"
+                                    onClick={() => setShowRejectModal(true)}
+                                >
+                                    ❌ Rechazar / Observar
+                                </Button>
+                            )}
+
+                            {ticket.assigned_agent_id && ticket.status !== 'RESUELTO_TECNICO' && ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED' && (
+                                <Button variant="danger" onClick={() => handleAction('CLOSE')}>✅ Resolver (Técnico)</Button>
                             )}
                         </>
                     )}
@@ -143,27 +192,42 @@ const TicketDetail = () => {
                                             <span className="text-xs font-bold text-gray-700">{msg.sender?.name || 'Desconocido'}</span>
                                             <span className="text-xs text-gray-400">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                         </div>
-                                        <p className="text-sm text-gray-700 leading-relaxed">{msg.content}</p>
+                                        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                                     </div>
                                 </div>
                             ))}
                         </div>
 
-                        {/* Reply Box (Hidden for Monitor) */}
+                        {/* Reply Box Logic */}
                         {user?.role !== 'MONITOR' && (
                             <div className="border-t border-gray-100 pt-4 mt-auto">
-                                <textarea
-                                    className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-cge-blue outline-none resize-none transition-shadow"
-                                    rows="3"
-                                    placeholder="Escribí una respuesta..."
-                                    value={messageInput}
-                                    onChange={(e) => setMessageInput(e.target.value)}
-                                ></textarea>
-                                <div className="flex justify-end mt-2">
-                                    <Button className="flex items-center gap-2" onClick={handleSendMessage}>
-                                        <Send size={16} /> Enviar Respuesta
-                                    </Button>
-                                </div>
+                                {!ticket.assigned_agent_id ? (
+                                    <div className="flex flex-col items-center justify-center p-6 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                                        <p className="text-gray-500 mb-3 text-sm">Debes asignarte este ticket para poder responder.</p>
+                                        <Button
+                                            variant="primary"
+                                            className="flex items-center gap-2"
+                                            onClick={() => handleAction('ASSIGN_ME')}
+                                        >
+                                            <User size={16} /> Tomar Caso
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <textarea
+                                            className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-cge-blue outline-none resize-none transition-shadow"
+                                            rows="3"
+                                            placeholder="Escribí una respuesta..."
+                                            value={messageInput}
+                                            onChange={(e) => setMessageInput(e.target.value)}
+                                        ></textarea>
+                                        <div className="flex justify-end mt-2">
+                                            <Button className="flex items-center gap-2" onClick={handleSendMessage}>
+                                                <Send size={16} /> Enviar Respuesta
+                                            </Button>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         )}
                     </Card>
@@ -238,6 +302,33 @@ const TicketDetail = () => {
                     )}
                 </div>
             </div>
+
+            {/* Rejection Modal */}
+            {showRejectModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <Card className="w-96 p-6">
+                        <div className="flex items-center gap-2 mb-4 text-orange-600">
+                            <AlertTriangle size={24} />
+                            <h2 className="text-xl font-bold">Observar / Rechazar Ticket</h2>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-4">
+                            Indique el motivo por el cual se rechaza u observa este ticket. Este mensaje será enviado al usuario.
+                        </p>
+                        <textarea
+                            className="w-full border border-gray-300 rounded-lg p-3 text-sm mb-4 bg-gray-50"
+                            rows="4"
+                            placeholder="Motivo: Falta recibo de sueldo, no corresponde a esta área, etc..."
+                            value={rejectReason}
+                            onChange={(e) => setRejectReason(e.target.value)}
+                            autoFocus
+                        ></textarea>
+                        <div className="flex justify-end gap-2">
+                            <Button variant="secondary" onClick={() => { setShowRejectModal(false); setRejectReason(''); }}>Cancelar</Button>
+                            <Button className="bg-orange-500 hover:bg-orange-600 text-white" onClick={handleReject}>Confirmar Observación</Button>
+                        </div>
+                    </Card>
+                </div>
+            )}
         </div>
     );
 };

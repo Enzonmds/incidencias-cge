@@ -16,6 +16,36 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
     }, []);
 
+    // Session Timeout Logic (10 mins)
+    useEffect(() => {
+        if (!user) return; // Only track if logged in
+
+        const INACTIVITY_LIMIT = 10 * 60 * 1000; // 10 minutes
+        let timeoutId;
+
+        const resetTimer = () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                console.log('⏳ Session expired due to inactivity');
+                logout();
+                alert('Su sesión ha expirado por inactividad (10 min).');
+            }, INACTIVITY_LIMIT);
+        };
+
+        // Listeners for activity
+        window.addEventListener('click', resetTimer);
+        window.addEventListener('keypress', resetTimer);
+
+        // Start timer initially
+        resetTimer();
+
+        return () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            window.removeEventListener('click', resetTimer);
+            window.removeEventListener('keypress', resetTimer);
+        };
+    }, [user]); // Re-run if user logs in/out
+
     const login = async (email, password) => {
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {

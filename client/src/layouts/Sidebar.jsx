@@ -44,7 +44,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
                 <div className="p-6 border-b border-white border-opacity-10 flex justify-between items-start">
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight">Incidencias CGE</h1>
+                        <h1 className="text-2xl font-bold tracking-tight">Consultas CGE</h1>
                         <p className="text-xs text-gray-300 mt-1">
                             {user?.name || 'Usuario'} ({user?.role})
                         </p>
