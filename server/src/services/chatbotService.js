@@ -13,14 +13,25 @@ const LEGAL_LINK = `${FRONTEND_URL}/legal`;
 
 export const processMessage = async (user, messageBody, from) => {
     try {
-        // Global Command: /reset
-        if (messageBody.trim().toLowerCase() === '/reset') {
+        const cleanMsg = messageBody.trim().toLowerCase();
+
+        // 0. Ignore empty or media-only triggers handled elsewhere
+        if (!cleanMsg) return;
+
+        // 1. GLOBAL COMMANDS
+        if (['/reset', 'salir', 'menu', 'exit', 'chau', 'adios', 'bye', 'cancelar'].includes(cleanMsg)) {
             return await handleReset(user, from);
         }
 
+        // 2. STATE MACHINE
         switch (user.whatsapp_step) {
             case 'MENU':
             case 'WAITING_DNI':
+                // Check for greetings if they haven't started DNI flow properly
+                if (['hola', 'buenas', 'ayuda'].some(w => cleanMsg.startsWith(w))) {
+                    await sendWhatsAppMessage(from, `👋 Hola! Soy el Asistente Virtual de CGE.\n\n📝 *Solo procesamos mensajes de texto.*\n🚫 *No se aceptan audios ni llamadas.*\n\nPara iniciar, por favor ingrese su número de DNI (sin puntos):`);
+                    return;
+                }
                 return await handleDniInput(user, messageBody, from);
 
             case 'WAITING_TOPIC':
@@ -47,6 +58,9 @@ export const processMessage = async (user, messageBody, from) => {
             case 'WAITING_RATING':
                 return await handleRating(user, messageBody, from);
 
+            case 'WAITING_RAG_CONFIRMATION':
+                return await handleRAGConfirmation(user, cleanMsg, from);
+
             default:
                 // Fallback
                 user.whatsapp_step = 'WAITING_DNI';
@@ -65,7 +79,7 @@ const handleReset = async (user, from) => {
     user.whatsapp_step = 'WAITING_DNI';
     user.whatsapp_temp_role = null;
     await user.save();
-    await sendWhatsAppMessage(from, `👋 Hola de nuevo!.\n\n⚠️ Antes de continuar, lea nuestro Aviso Legal:\n🔗 ${LEGAL_LINK}\n\nPara iniciar, por favor ingrese su número de DNI (sin puntos):`);
+    await sendWhatsAppMessage(from, `🔄 *Reinicio del Sistema*\n\n👋 Hola de nuevo. Para comenzar, ingrese su DNI (sin puntos):`);
 };
 
 const handleDniInput = async (user, messageBody, from) => {
@@ -85,7 +99,7 @@ const handleDniInput = async (user, messageBody, from) => {
             user.role = existingUser.role || 'USER';
             user.name = existingUser.name;
             await user.save();
-            await sendWhatsAppMessage(from, `👋 Hola ${existingUser.name}, bienvenido nuevamente.\n\nPor favor, seleccione el tema de su consulta:\n\n1️⃣ Haberes\n2️⃣ Viaticos\n3️⃣ Casinos | Barrios Militares\n4️⃣ Datos personales\n5️⃣ Juicios\n6️⃣ Suplementos\n7️⃣ Alquileres`);
+            await sendWhatsAppMessage(from, `👋 Hola ${existingUser.name}, bienvenido nuevamente.\n\nPor favor, seleccione el tema de su consulta:\n\n1️⃣ Haberes\n2️⃣ Viaticos\n3️⃣ Casinos | Barrios Militares\n4️⃣ Datos personales\n5️⃣ Juicios\n6️⃣ Suplementos\n7️⃣ Alquileres\n\n📝 *O escriba su consulta y la tendremos en cuenta.*`);
         } else {
             // CASE B: DNI Exists, Phone Mismatch -> Magic Link
             console.log('🔒 Authentication required. Sending Magic Link...');
@@ -132,7 +146,15 @@ const handleTopicSelection = async (user, messageBody, from) => {
         await sendWhatsAppMessage(from, `📂 Tema seleccionado: *${topic}*.\n\n⚠️ *Importante*: Al solicitar información detallada, usted consiente el uso de sus datos. Lea nuestro aviso legal aquí:\n🔗 ${LEGAL_LINK}\n\n📝 *Por favor, describa detalladamente su consulta ahora:*`);
     } else {
         // 2. RAG + Smart Categorization (Zero-Shot)
+
+        // Sanity Check: Don't create tickets for very short messages that aren't navigation
+        if (messageBody.trim().length < 5) {
+            await sendWhatsAppMessage(from, `⚠️ Por favor, describa su problema con más detalle (mínimo 5 letras) para poder ayudarle.`);
+            return;
+        }
+
         await sendWhatsAppMessage(from, `🧠 Analizando su consulta...`);
+        // ... rest of logic
 
         // A. Try RAG (Knowledge Base)
         const ragResult = await searchKnowledge(messageBody);
@@ -159,11 +181,25 @@ const handleTopicSelection = async (user, messageBody, from) => {
     }
 };
 
+const handleRAGConfirmation = async (user, cleanMsg, from) => {
+    if (['si', 's', 'sí', 'gracias', 'ok', 'resuelto'].some(w => cleanMsg.startsWith(w))) {
+        await sendWhatsAppMessage(from, `🌟 ¡Excelente! Nos alegra haber podido ayudar.\n\nSi necesita algo más, escriba *Menu*.`);
+        user.whatsapp_step = 'ACTIVE_SESSION'; // Or reset to DNI? Active Session lets them chat again which might trigger ticket.
+        // Better: Reset to DNI or just Null state that requires 'Menu'
+        user.whatsapp_step = 'WAITING_TOPIC'; // Send back to Asking Topic state but waiting for input
+        await user.save();
+    } else {
+        // User said NO, so create ticket
+        const predictedQueue = await predictQueue("Consulta general sobre " + user.name);
+        user.whatsapp_topic = `IA_AUTO: ${predictedQueue}`;
+        await user.save();
+        await sendWhatsAppMessage(from, `Entendido, derivando a un operador...`);
+        await handleTicketCreation(user, "Consulta derivada de IA (RAG Failed)", from, predictedQueue);
+    }
+}
+
 const handleTicketCreation = async (user, messageBody, from, queue = null) => {
     // Priority based on User Type (Smart Assignment)
-    // - Logged User/Militar -> HIGH
-    // - Entity -> MEDIUM
-    // - Guest -> LOW
     const priority = calculatePriority(user);
 
     const dTicket = await Ticket.create({
@@ -243,19 +279,22 @@ const handleResolutionConfirmation = async (user, messageBody, from) => {
 
     if (!resolvedTicket) return false;
 
-    const response = messageBody.trim().toUpperCase();
-    if (response === 'SI' || response === 'SÍ') {
+    const response = messageBody.trim().toLowerCase();
+    const positiveIntents = ['si', 's', 'sí', 'gracias', 'resuelto', 'ok', 'excelente', 'listo', 'funciona', 'ya esta'];
+    const negativeIntents = ['no', 'n', 'mal', 'sigue igual', 'error', 'falla'];
+
+    if (positiveIntents.some(w => response.startsWith(w) || response.includes(w))) {
         resolvedTicket.status = 'CERRADO';
         await resolvedTicket.save();
 
-        await sendWhatsAppMessage(from, `🌟 ¡Muchas gracias! Nos alegra haber podido ayudar.\n\nPor favor, califique la atención recibida respondiendo con un número del 1 al 5:\n\n1️⃣ Mala\n2️⃣ Regular\n3️⃣ Buena\n4️⃣ Muy Buena\n5️⃣ Excelente`);
+        await sendWhatsAppMessage(from, `🌟 ¡Nos alegra haber podido ayudar!\n\nPor favor, califique la atención del 1 al 5:\n\n1️⃣ Mala\n2️⃣ Regular\n3️⃣ Buena\n4️⃣ Muy Buena\n5️⃣ Excelente`);
 
         user.whatsapp_step = 'WAITING_RATING';
         user.whatsapp_temp_role = resolvedTicket.id.toString();
         await user.save();
         return true;
 
-    } else if (response === 'NO') {
+    } else if (negativeIntents.some(w => response.startsWith(w))) {
         resolvedTicket.status = 'IN_PROGRESS';
         await resolvedTicket.save();
 
@@ -300,12 +339,19 @@ const handleActiveSession = async (user, messageBody, from) => {
             ticket.status = 'PENDIENTE_VALIDACION';
             await ticket.save();
             await sendWhatsAppMessage(from, `✅ Información recibida. Su caso ha sido enviado nuevamente a validación.`);
+        } else {
+            // Acknowledge receipt for normal thread
+            await sendWhatsAppMessage(from, `📝 Mensaje agregado al Ticket #${ticket.id}`);
         }
         console.log(`✅ Appended to Ticket #${ticket.id}`);
     } else {
+        // If message is media, just warn them we need a ticket first
+        if (messageBody.startsWith('[') && messageBody.endsWith(']')) {
+            await sendWhatsAppMessage(from, `📸 Recibí su archivo, pero no tiene un ticket abierto para adjuntarlo.\n\nInicie una consulta primero.`);
+        }
         user.whatsapp_step = 'WAITING_TOPIC';
         await user.save();
-        await sendWhatsAppMessage(from, `❌ No entendí su mensaje o no tiene un ticket abierto.\n\nPor favor, seleccione una opción del menú para iniciar una nueva consulta:\n\n1️⃣ Haberes\n2️⃣ Viaticos\n3️⃣ Casinos | Barrios Militares\n4️⃣ Datos personales\n5️⃣ Juicios\n6️⃣ Suplementos\n7️⃣ Alquileres`);
+        await sendWhatsAppMessage(from, `❌ No entendí su mensaje o no tiene un ticket abierto.\n\nPor favor, seleccione una opción del menú para iniciar una nueva consulta:\n\n1️⃣ Haberes\n2️⃣ Viaticos\n3️⃣ Casinos | Barrios Militares\n4️⃣ Datos personales\n5️⃣ Juicios\n6️⃣ Suplementos\n7️⃣ Alquileres\n\n📝 *O escriba su consulta y la tendremos en cuenta.*`);
     }
 };
 

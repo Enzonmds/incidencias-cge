@@ -46,6 +46,9 @@ const ReportsPage = () => {
 
                     // Calculate KPIs
                     const total = data.length;
+                    let totalScore = 0;
+                    let ratedTicketsCount = 0;
+                    let slaBreachedCount = 0; // If tracking SLA
 
                     // Group by Category
                     const categoryCount = data.reduce((acc, t) => {
@@ -61,30 +64,57 @@ const ReportsPage = () => {
                     })).sort((a, b) => b.count - a.count);
 
                     // Group by Agent (Assignee)
-                    const agentCount = data.reduce((acc, t) => {
+                    const agentStats = {};
+
+                    data.forEach(t => {
+                        // SLA Check (Mock logic or use existing field if available, currently mocked)
+                        // if (t.sla_breached) slaBreachedCount++;
+
+                        // Global Rating
+                        if (t.rating_score && t.rating_score > 0) {
+                            totalScore += t.rating_score;
+                            ratedTicketsCount++;
+                        }
+
                         if (t.assignee) {
                             const name = t.assignee.name;
-                            if (!acc[name]) acc[name] = { solved: 0, open: 0 };
-                            if (t.status === 'RESUELTO_TECNICO' || t.status === 'CERRADO' || t.status === 'RESOLVED') {
-                                acc[name].solved++;
+                            if (!agentStats[name]) {
+                                agentStats[name] = { solved: 0, open: 0, totalRating: 0, ratingCount: 0 };
+                            }
+
+                            if (['RESUELTO_TECNICO', 'CERRADO', 'RESOLVED'].includes(t.status)) {
+                                agentStats[name].solved++;
                             } else {
-                                acc[name].open++;
+                                agentStats[name].open++;
+                            }
+
+                            if (t.rating_score && t.rating_score > 0) {
+                                agentStats[name].totalRating += t.rating_score;
+                                agentStats[name].ratingCount++;
                             }
                         }
-                        return acc;
-                    }, {});
+                    });
 
-                    const byAgent = Object.keys(agentCount).map(name => ({
-                        name,
-                        solved: agentCount[name].solved,
-                        open: agentCount[name].open
-                    }));
+                    const byAgent = Object.keys(agentStats).map(name => {
+                        const stat = agentStats[name];
+                        const avgResponse = stat.ratingCount > 0 ? (stat.totalRating / stat.ratingCount).toFixed(1) : 'N/A';
+                        return {
+                            name,
+                            solved: stat.solved,
+                            open: stat.open,
+                            avgRating: avgResponse,
+                            ratingCount: stat.ratingCount
+                        };
+                    });
+
+                    const globalAvg = ratedTicketsCount > 0 ? (totalScore / ratedTicketsCount).toFixed(1) : 0;
+                    const satisfactionPercentage = globalAvg > 0 ? Math.round((globalAvg / 5) * 100) : 100;
 
                     setStats({
                         total,
                         avgTime: '2.5 hrs', // Mocked for MVP
-                        satisfaction: '98%', // Mocked for MVP
-                        slaBreached: 0,
+                        satisfaction: `${globalAvg > 0 ? globalAvg : '-'} / 5 (${satisfactionPercentage}%)`,
+                        slaBreached: slaBreachedCount,
                         byCategory,
                         byAgent
                     });
@@ -234,16 +264,29 @@ const ReportsPage = () => {
                     <h3 className="font-semibold mb-6">Rendimiento por Agente</h3>
                     <div className="space-y-6">
                         {stats.byAgent.length > 0 ? stats.byAgent.map((agent) => (
-                            <div key={agent.name} className="flex items-center gap-4">
-                                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold print:border print:border-gray-300">
+                            <div key={agent.name} className="flex items-center gap-4 border-b border-gray-50 last:border-0 pb-3 last:pb-0">
+                                <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold print:border print:border-gray-300">
                                     {agent.name.charAt(0)}
                                 </div>
                                 <div className="flex-1">
-                                    <p className="text-sm font-medium">{agent.name}</p>
-                                    <p className="text-xs text-gray-500">{agent.solved} resueltos</p>
+                                    <p className="text-sm font-medium text-gray-800">{agent.name}</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-100">{agent.solved} resueltos</span>
+                                        <span className="text-xs text-gray-500">{agent.open} activos</span>
+                                    </div>
                                 </div>
                                 <div className="text-right">
-                                    <span className="text-xs font-bold bg-gray-100 px-2 py-1 rounded print:border print:border-gray-200">{agent.open} activos</span>
+                                    {agent.avgRating !== 'N/A' ? (
+                                        <div className="flex flex-col items-end">
+                                            <div className="flex items-center gap-1 text-yellow-500">
+                                                <span className="text-sm font-bold">{agent.avgRating}</span>
+                                                <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" /></svg>
+                                            </div>
+                                            <span className="text-[10px] text-gray-400">({agent.ratingCount} calif.)</span>
+                                        </div>
+                                    ) : (
+                                        <span className="text-xs text-gray-400 italic">Sin calif.</span>
+                                    )}
                                 </div>
                             </div>
                         )) : <div className="text-gray-500 text-sm">No hay datos de agentes</div>}

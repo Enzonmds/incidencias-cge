@@ -146,13 +146,28 @@ export const seedDatabase = async () => {
 
         for (let i = 0; i < 50; i++) {
             const q = possibleQueues[Math.floor(Math.random() * possibleQueues.length)];
-            const s = Math.random() > 0.3 ? 'EN_COLA_DEPARTAMENTAL' : (Math.random() > 0.5 ? 'EN_PROCESO' : 'CERRADO');
+            const status = Math.random() > 0.3 ? 'EN_COLA_DEPARTAMENTAL' : (Math.random() > 0.5 ? 'EN_PROCESO' : 'CERRADO');
             let assigned = null;
-            if (s !== 'EN_COLA_DEPARTAMENTAL') assigned = deptUsers[q]?.id;
+            let rating = null;
+
+            if (status !== 'EN_COLA_DEPARTAMENTAL') {
+                assigned = deptUsers[q]?.id;
+            }
+
+            if (status === 'CERRADO') {
+                // Biased Random Rating (Mostly 4-5, some others)
+                const rand = Math.random();
+                if (rand > 0.8) rating = 5;
+                else if (rand > 0.5) rating = 4;
+                else if (rand > 0.3) rating = 3;
+                else if (rand > 0.1) rating = 2;
+                else rating = 1;
+            }
 
             tickets.push({
-                title: `Ticket Auto #${i}`, description: 'Generado automáticamente.',
-                status: s, category: possibleCats[Math.floor(Math.random() * possibleCats.length)],
+                title: `Ticket Auto #${i}`, description: 'Generado automáticamente para pruebas de carga y reportes.',
+                status: status,
+                category: possibleCats[Math.floor(Math.random() * possibleCats.length)],
                 cola_atencion: q,
                 dni_solicitante: `99${i}00`, telefono_contacto: '11-0000-0000',
 
@@ -163,7 +178,9 @@ export const seedDatabase = async () => {
                 solicitante_nombre_completo: `Solicitante Auto ${i}`,
                 solicitante_email: `soldier${i}@mil.ar`,
 
-                created_by_user_id: normalUser.id, assigned_agent_id: assigned,
+                created_by_user_id: normalUser.id,
+                assigned_agent_id: assigned,
+                rating_score: rating,
                 createdAt: new Date(new Date() - Math.floor(Math.random() * 10 * 24 * 60 * 60 * 1000))
             });
         }

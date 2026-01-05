@@ -192,7 +192,48 @@ const TicketDetail = () => {
                                             <span className="text-xs font-bold text-gray-700">{msg.sender?.name || 'Desconocido'}</span>
                                             <span className="text-xs text-gray-400">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                         </div>
-                                        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                                        <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                            {(() => {
+                                                if (msg.content.startsWith('[MEDIA_URL]:')) {
+                                                    const url = msg.content.replace('[MEDIA_URL]:', '').trim();
+                                                    const ext = url.split('.').pop().toLowerCase();
+
+                                                    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+                                                        return (
+                                                            <div>
+                                                                <p className="text-xs font-bold text-gray-500 mb-1">📷 Imagen Adjunta:</p>
+                                                                <a href={url} target="_blank" rel="noopener noreferrer">
+                                                                    <img src={url} alt="Adjunto" className="max-w-full h-auto max-h-64 rounded-lg border border-gray-200 hover:opacity-95 transition-opacity" />
+                                                                </a>
+                                                            </div>
+                                                        );
+                                                    } else if (['mp3', 'ogg', 'wav'].includes(ext)) {
+                                                        return (
+                                                            <div>
+                                                                <p className="text-xs font-bold text-gray-500 mb-1">🎤 Audio Adjunto:</p>
+                                                                <audio controls src={url} className="w-full" />
+                                                            </div>
+                                                        );
+                                                    } else {
+                                                        return (
+                                                            <div className="flex items-center gap-2 bg-gray-100 p-3 rounded-lg border border-gray-200">
+                                                                <span className="text-2xl">
+                                                                    {['xls', 'xlsx', 'csv'].includes(ext) ? '📊' :
+                                                                        ['pdf'].includes(ext) ? '📄' : '📁'}
+                                                                </span>
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-semibold text-gray-700 text-xs uppercase">{ext}</span>
+                                                                    <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline text-sm break-all">
+                                                                        Descargar Archivo
+                                                                    </a>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }
+                                                }
+                                                return msg.content;
+                                            })()}
+                                        </div>
                                     </div>
                                 </div>
                             ))}

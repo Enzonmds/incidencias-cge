@@ -2,6 +2,7 @@
 import { User } from '../models/index.js';
 import { sendWhatsAppMessage } from '../services/whatsappService.js';
 import { processMessage } from '../services/chatbotService.js';
+import { downloadWhatsAppMedia } from '../services/whatsappMediaService.js';
 
 // 1. Webhook Verification (Handshake)
 export const verifyWebhook = (req, res) => {
@@ -35,11 +36,35 @@ export const handleWhatsAppWebhook = async (req, res) => {
                 body.entry[0].changes[0].value.messages[0]
             ) {
                 const messageObj = body.entry[0].changes[0].value.messages[0];
-                const from = messageObj.from; // e.g. "5491112345678"
-                const messageBody = messageObj.text?.body || '';
+                const from = messageObj.from;
                 const name = body.entry[0].changes[0].value.contacts[0]?.profile?.name || 'Usuario WhatsApp';
+                const msgType = messageObj.type;
 
-                console.log(`📩 WhatsApp from ${name} (${from}): ${messageBody} `);
+                let messageBody = '';
+
+                if (msgType === 'text') {
+                    messageBody = messageObj.text.body;
+                } else if (['image', 'document'].includes(msgType)) {
+                    // Download Media (Images & Docs only)
+                    const mediaId = messageObj[msgType]?.id;
+                    const mediaResult = await downloadWhatsAppMedia(mediaId, msgType);
+
+                    if (mediaResult) {
+                        messageBody = `[MEDIA_URL]: ${mediaResult.url}`;
+                        console.log(`📎 Media Downloaded: ${mediaResult.filename}`);
+                    } else {
+                        messageBody = `[ERROR_DESCARGA_MEDIA: ${msgType}]`;
+                    }
+                } else if (msgType === 'audio') {
+                    // Reject Audio
+                    console.log(`🔇 Audio rejected from ${from}`);
+                    await sendWhatsAppMessage(from, `🚫 *Sistema de Texto Exclusivamente*\n\nPor favor, *no envíe audios ni realice llamadas*.\n\nEscriba su consulta para que la Inteligencia Artificial pueda procesarla. Gracias.`);
+                    return res.sendStatus(200); // Stop processing
+                } else {
+                    messageBody = `[ARCHIVO: ${msgType}]`;
+                }
+
+                console.log(`📩 WhatsApp from ${name} (${from}) [${msgType}]: ${messageBody} `);
 
                 // 1. Find or Create User by Phone
                 let user = await User.findOne({ where: { phone: from } });
