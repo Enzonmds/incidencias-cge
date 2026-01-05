@@ -5,6 +5,8 @@ import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 
+import logo from '../assets/logo_cge.png';
+
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -27,6 +29,7 @@ const Login = () => {
         <div className="min-h-screen flex items-center justify-center bg-cge-sidebar">
             <Card className="w-full max-w-md p-8">
                 <div className="text-center mb-8">
+                    <img src={logo} alt="CGE Logo" className="w-24 h-24 mx-auto mb-4 object-contain" />
                     <h1 className="text-3xl font-bold text-cge-sidebar mb-2">Consultas CGE</h1>
                     <p className="text-gray-500">Ingrese sus credenciales para continuar</p>
                 </div>

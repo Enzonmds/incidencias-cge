@@ -5,6 +5,7 @@ import Button from '../components/ui/Button';
 import { BarChart, Clock, CheckCircle, AlertTriangle, FileText, Download } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import * as XLSX from 'xlsx';
+import logo from '../assets/logo_cge.png';
 
 const ReportsPage = () => {
     const { token } = useContext(AuthContext);

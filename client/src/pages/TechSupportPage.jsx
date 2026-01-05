@@ -76,9 +76,9 @@ const TechSupportPage = () => {
             {tickets.length === 0 && <div className="text-gray-500 italic">No hay tickets en esta sección.</div>}
             {tickets.map(ticket => (
                 <Card key={ticket.id} className="p-4 border-l-4 border-l-blue-500">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <div className="flex items-center gap-2 mb-2">
+                    <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+                        <div className="w-full">
+                            <div className="flex items-center flex-wrap gap-2 mb-2">
                                 <span className="font-mono text-gray-500">#{ticket.id}</span>
                                 <Badge variant={ticket.priority}>{ticket.priority}</Badge>
                                 <span className="text-xs text-gray-400">{new Date(ticket.createdAt).toLocaleString()}</span>
@@ -89,14 +89,14 @@ const TechSupportPage = () => {
                                 {ticket.category} - {ticket.cola_atencion}
                             </div>
                         </div>
-                        <div>
+                        <div className="w-full md:w-auto shrink-0 flex justify-end">
                             {type === 'QUEUE' && (
-                                <Button size="sm" onClick={() => handleAssignToMe(ticket.id)}>
+                                <Button size="sm" onClick={() => handleAssignToMe(ticket.id)} className="w-full md:w-auto">
                                     <Play size={16} className="mr-1" /> Tomar Caso
                                 </Button>
                             )}
                             {type === 'MINE' && (
-                                <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleResolve(ticket.id)}>
+                                <Button size="sm" className="bg-green-600 hover:bg-green-700 w-full md:w-auto" onClick={() => handleResolve(ticket.id)}>
                                     <CheckCircle size={16} className="mr-1" /> Resolver
                                 </Button>
                             )}
@@ -113,12 +113,12 @@ const TechSupportPage = () => {
 
     return (
         <div className="space-y-8">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <h1 className="text-2xl font-bold text-gray-800">Soporte Técnico</h1>
                 <select
                     value={selectedQueue}
                     onChange={(e) => setSelectedQueue(e.target.value)}
-                    className="border p-2 rounded-lg bg-white"
+                    className="border p-2 rounded-lg bg-white w-full md:w-auto"
                 >
                     <option value="TESORERIA">Tesorería</option>
                     <option value="GASTOS_PERSONAL">Gastos en Personal</option>

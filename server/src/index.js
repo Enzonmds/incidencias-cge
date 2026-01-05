@@ -11,6 +11,7 @@ import reportRoutes from './routes/reportRoutes.js';
 import { seedDatabase } from './seed.js';
 
 import { checkSLA } from './services/slaService.js';
+import { initializeKnowledgeBase } from './services/knowledgeService.js';
 
 dotenv.config();
 
@@ -43,6 +44,9 @@ const startServer = async () => {
         console.log('Database connected and synced');
 
         await seedDatabase();
+
+        // Initialize RAG (Embeddings)
+        await initializeKnowledgeBase();
 
         // Start SLA Monitor
         setInterval(() => {

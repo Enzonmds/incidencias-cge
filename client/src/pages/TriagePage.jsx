@@ -13,7 +13,8 @@ const TriagePage = () => {
 
     const fetchPendingTickets = async () => {
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tickets?status=PENDIENTE_VALIDACION`, {
+            // Triage 2.0: Fetch Operational View (Exceptions & Crises)
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tickets?operational_view=true`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
@@ -61,14 +62,30 @@ const TriagePage = () => {
         }
     };
 
+    // Helper to determine why the ticket is here
+    const getCrisisReason = (ticket) => {
+        if (ticket.status === 'PENDIENTE_VALIDACION' || ticket.cola_atencion === 'OTHER' || ticket.category === 'OTHER') {
+            return { label: '⚠️ IA Insegura / Sin Clasificar', color: 'bg-yellow-100 text-yellow-800' };
+        }
+        if (ticket.priority === 'CRITICAL') {
+            return { label: '🔥 CRÍTICO / Urgente', color: 'bg-red-100 text-red-800' };
+        }
+        // Check if older than 4 hours
+        const isStale = new Date(ticket.createdAt) < new Date(new Date() - 4 * 60 * 60 * 1000);
+        if (isStale) {
+            return { label: '⏰ Demorado (>4hs)', color: 'bg-orange-100 text-orange-800' };
+        }
+        return { label: 'Gestión Requerida', color: 'bg-gray-100 text-gray-800' };
+    };
+
     if (user?.role !== 'HUMAN_ATTENTION' && user?.role !== 'ADMIN') {
-        return <div className="p-8 text-center text-red-500">Acceso restringido a Mesa de Ayuda (Atención Humana).</div>;
+        return <div className="p-8 text-center text-red-500">Acceso restringido a Coordinación de Operaciones.</div>;
     }
 
     return (
         <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-gray-800">Triaje y Validación</h1>
-            <p className="text-gray-500">Tickets entrantes pendientes de derivación.</p>
+            <h1 className="text-2xl font-bold text-gray-800">Centro de Coordinación y Operaciones</h1>
+            <p className="text-gray-500">Gestión de excepciones, tickets críticos y fallos de clasificación automática.</p>
 
             <div className="grid grid-cols-1 gap-4">
                 {tickets.map(ticket => {
@@ -76,13 +93,18 @@ const TriagePage = () => {
                         ? ticket.messages[ticket.messages.length - 1].content
                         : ticket.description;
                     const phoneNumber = ticket.telefono_contacto || ticket.creator?.phone || 'N/A';
+                    const crisis = getCrisisReason(ticket);
 
                     return (
-                        <Card key={ticket.id} className="p-4 flex justify-between items-start">
-                            <div className="flex-1 min-w-0 pr-4">
-                                <div className="flex items-center gap-2 mb-2">
+                        <Card key={ticket.id} className="p-4 flex flex-col md:flex-row justify-between items-start gap-4 border-l-4 border-l-cge-blue">
+                            <div className="flex-1 min-w-0 w-full">
+                                <div className="flex flex-wrap items-center gap-2 mb-2">
                                     <span className="font-mono text-gray-500">#{ticket.id}</span>
-                                    <Badge variant="PENDING">Pendiente Validación</Badge>
+                                    {/* Critical Interaction Reason Badge */}
+                                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${crisis.color} flex items-center gap-1`}>
+                                        {crisis.label}
+                                    </span>
+                                    <Badge variant={ticket.status}>{ticket.status}</Badge>
                                     <span className="text-xs text-gray-400">{new Date(ticket.createdAt).toLocaleString()}</span>
                                 </div>
                                 <h3 className="font-bold text-lg text-gray-900 truncate">{ticket.title}</h3>
@@ -94,28 +116,27 @@ const TriagePage = () => {
                                     <p className="text-sm text-gray-700 line-clamp-2">{lastMessage}</p>
                                 </div>
 
-                                <div className="flex gap-4 text-sm text-gray-700 mt-2">
-                                    <div><span className="font-semibold">Solicitante:</span> {ticket.creator?.name}</div>
-                                    <div><span className="font-semibold">DNI:</span> {ticket.dni_solicitante || 'N/A'}</div>
-                                    <div className="flex items-center gap-1">
-                                        <span className="font-semibold">Tel:</span>
-                                        <span>{phoneNumber}</span>
+                                <div className="flex flex-wrap gap-2 text-sm text-gray-700 mt-2">
+                                    <div className="px-2 py-1 bg-gray-100 rounded">Solic: <b>{ticket.creator?.name}</b></div>
+                                    <div className="px-2 py-1 bg-gray-100 rounded">Cola Actual: <b>{ticket.cola_atencion || 'N/A'}</b></div>
+                                    <div className="px-2 py-1 bg-gray-100 rounded flex items-center gap-1">
+                                        Tel: {phoneNumber}
                                     </div>
                                     <button
-                                        className="text-cge-blue hover:underline text-xs flex items-center gap-1 ml-2"
+                                        className="text-cge-blue hover:underline text-xs flex items-center gap-1 ml-1 mt-1 md:mt-0"
                                         onClick={() => { setSelectedTicket(ticket); setActionModal('HISTORY'); }}
                                     >
-                                        <Eye size={14} /> Ver Historial Completo ({ticket.messages?.length || 0})
+                                        <Eye size={14} /> Historial
                                     </button>
                                 </div>
                             </div>
 
-                            <div className="flex flex-col gap-2 shrink-0">
-                                <Button className="bg-green-600 hover:bg-green-700 w-full" onClick={() => { setSelectedTicket(ticket); setActionModal('APPROVE'); }}>
-                                    <Check size={18} /> Validar
+                            <div className="flex flex-row md:flex-col gap-2 w-full md:w-auto shrink-0">
+                                <Button className="bg-green-600 hover:bg-green-700 flex-1 md:flex-none" onClick={() => { setSelectedTicket(ticket); setActionModal('APPROVE'); }}>
+                                    <Check size={18} /> <span className="md:hidden lg:inline">Validar</span>
                                 </Button>
-                                <Button variant="danger" className="w-full" onClick={() => { setSelectedTicket(ticket); setActionModal('REJECT'); }}>
-                                    <X size={18} /> Rechazar
+                                <Button variant="danger" className="flex-1 md:flex-none" onClick={() => { setSelectedTicket(ticket); setActionModal('REJECT'); }}>
+                                    <X size={18} /> <span className="md:hidden lg:inline">Rechazar</span>
                                 </Button>
                             </div>
                         </Card>
@@ -126,8 +147,8 @@ const TriagePage = () => {
 
             {/* History Modal */}
             {actionModal === 'HISTORY' && selectedTicket && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <Card className="w-[600px] h-[500px] flex flex-col p-0 overflow-hidden">
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <Card className="w-full max-w-2xl h-[500px] flex flex-col p-0 overflow-hidden">
                         <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
                             <h3 className="font-bold text-lg">Historial: Ticket #{selectedTicket.id}</h3>
                             <button onClick={() => setActionModal(null)} className="text-gray-500 hover:text-gray-700"><X size={20} /></button>
@@ -158,8 +179,8 @@ const TriagePage = () => {
 
             {/* Action Modal (Approve/Reject) */}
             {(actionModal === 'REJECT' || actionModal === 'APPROVE') && selectedTicket && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <Card className="w-[500px] p-6">
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <Card className="w-full max-w-lg p-6">
                         <h2 className="text-xl font-bold mb-4">
                             {actionModal === 'REJECT' ? 'Rechazar Ticket' : 'Derivar a Cola de Atención'}
                         </h2>

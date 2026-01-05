@@ -10,8 +10,14 @@ import { RefreshCw } from 'lucide-react';
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 const Dashboard = () => {
-    const { token } = useContext(AuthContext);
+    const { token, user } = useContext(AuthContext); // Destructure user
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (user && user.role === 'USER') {
+            navigate('/tickets');
+        }
+    }, [user, navigate]);
     const [tickets, setTickets] = useState([]);
     const [lastUpdated, setLastUpdated] = useState(new Date());
     const [stats, setStats] = useState({
@@ -75,15 +81,28 @@ const Dashboard = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Panel de Control</h1>
-                    <p className="text-xs text-gray-500 flex items-center gap-1">
-                        Actualizado: {lastUpdated.toLocaleTimeString()}
-                        <RefreshCw size={12} className="cursor-pointer hover:text-blue-600" onClick={fetchData} />
-                    </p>
+            {/* Premium Welcome Banner */}
+            <div className="relative overflow-hidden bg-gradient-to-r from-blue-900 to-cge-blue rounded-2xl p-8 text-white shadow-lg page-enter">
+                <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight mb-2">Hola, {user?.name || 'Usuario'} 👋</h1>
+                        <p className="text-blue-100 flex items-center gap-2 text-sm font-medium">
+                            <span className="opacity-75">{lastUpdated.toLocaleDateString()}</span> •
+                            <span className="opacity-75">{lastUpdated.toLocaleTimeString()}</span>
+                            <RefreshCw size={14} className="cursor-pointer hover:rotate-180 transition-transform duration-500" onClick={fetchData} title="Actualizar datos" />
+                        </p>
+                    </div>
+                    <Button
+                        onClick={() => navigate('/tickets')}
+                        variant="white"
+                        className="border-none shadow-xl transform hover:scale-105"
+                    >
+                        + Nuevo Reclamo
+                    </Button>
                 </div>
-                <Button onClick={() => navigate('/tickets')}>+ Nuevo Reclamo</Button>
+                {/* Abstract Background Shapes */}
+                <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl"></div>
+                <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-blue-400 opacity-10 rounded-full blur-2xl"></div>
             </div>
 
             {/* KPI Cards */}

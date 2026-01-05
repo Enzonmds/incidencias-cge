@@ -28,10 +28,10 @@ $body = @{
                         )
                         messages          = @(
                             @{
-                                from      = "17863559966"
+                                from      = "5491171483037"
                                 id        = "wamid.HBgLMTc4NjM1NTk5NjYVAGHAYWYET688aASGNTI1QzZFQjhEMDk2QQA="
                                 timestamp = "1758254144"
-                                text      = @{ body = "Hi! Esto es una prueba REAL de Meta" }
+                                text      = @{ body = "Como descargo mi recibo de sueldo" }
                                 type      = "text"
                             }
                         )

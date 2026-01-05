@@ -66,6 +66,35 @@ const Ticket = sequelize.define('Ticket', {
         ),
         defaultValue: 'OTHER',
     },
+
+    // --- Strict SLA Tracking ---
+    assigned_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+    },
+    last_agent_response_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+    },
+    last_user_message_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+    },
+    sla_stage: {
+        type: DataTypes.INTEGER, // 0=None, 1=Warning (Mesa), 2=Breach (Subdirector)
+        defaultValue: 0,
+    },
+
+    // --- Rating System ---
+    rating_score: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        validate: { min: 1, max: 5 }
+    },
+    rating_feedback: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+    },
     // Foreign keys created by associations
 });
 

@@ -76,8 +76,30 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    const impersonateRole = (newRole) => {
+        if (!user) return;
+
+        // Store original role if starting impersonation
+        if (!user.originalRole) {
+            const updatedUser = { ...user, originalRole: user.role, role: newRole };
+            setUser(updatedUser);
+            // Don't save to localStorage to avoid permanent persistence on refresh
+        } else {
+            // Updating existing impersonation
+            setUser({ ...user, role: newRole });
+        }
+        console.log(`🎭 Impersonating Role: ${newRole}`);
+    };
+
+    const stopImpersonation = () => {
+        if (!user || !user.originalRole) return;
+
+        setUser({ ...user, role: user.originalRole, originalRole: undefined });
+        console.log('🎭 Stopped Impersonation');
+    };
+
     return (
-        <AuthContext.Provider value={{ user, token, login, logout, loading }}>
+        <AuthContext.Provider value={{ user, token, login, logout, loading, impersonateRole, stopImpersonation }}>
             {!loading && children}
         </AuthContext.Provider>
     );

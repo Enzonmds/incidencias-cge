@@ -29,8 +29,13 @@ export const addMessageToTicket = async (req, res) => {
         // --- WhatsApp Outgoing Logic ---
         // If message is from Agent AND ticket is WhatsApp -> Reply to User
         // If message is from Agent AND ticket is WhatsApp -> Reply to User
-        if (req.user.role !== 'USER' && ticket.channel === 'WHATSAPP') {
-            if (ticket.creator?.phone) {
+        // If message is from Agent AND ticket is WhatsApp -> Reply to User
+        if (req.user.role !== 'USER') {
+            // SLA: Update Agent Response Timestamp
+            ticket.last_agent_response_at = new Date();
+            await ticket.save();
+
+            if (ticket.channel === 'WHATSAPP' && ticket.creator?.phone) {
                 await sendWhatsAppMessage(ticket.creator.phone, content);
             }
         }

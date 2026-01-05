@@ -152,67 +152,69 @@ const UsersPage = () => {
 
             {/* List */}
             <Card className="overflow-hidden">
-                <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
-                        <tr>
-                            <th className="p-4">Usuario</th>
-                            <th className="p-4">DNI</th>
-                            <th className="p-4">Email</th>
-                            <th className="p-4">Rol / Unidad</th>
-                            <th className="p-4">Estado</th>
-                            {activeTab === 'internal' && <th className="p-4">Acciones</th>}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {loading && activeTab === 'internal' ? (
-                            <tr><td colSpan="5" className="p-4 text-center">Cargando usuarios...</td></tr>
-                        ) : (activeTab === 'internal' ? internalUsers : adUsers)
-                            .filter(u =>
-                                u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                u.email.toLowerCase().includes(searchTerm.toLowerCase())
-                            )
-                            .map((u) => (
-                                <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50">
-                                    <td className="p-4 flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
-                                            {u.role ? <Shield size={14} /> : <User size={14} />}
-                                        </div>
-                                        <span className="font-medium text-gray-900">{u.name}</span>
-                                    </td>
-                                    <td className="p-4 text-gray-600 font-mono">{u.dni || '-'}</td>
-                                    <td className="p-4 text-gray-600">{u.email}</td>
-                                    <td className="p-4">
-                                        {u.role ? (
-                                            <Badge variant={u.role}>{u.role}</Badge>
-                                        ) : (
-                                            <span className="text-gray-500 italic">{u.unit}</span>
-                                        )}
-                                    </td>
-                                    <td className="p-4">
-                                        <Badge variant={u.status === 'ACTIVE' || u.status === 'SYNCED' ? 'RESOLVED' : 'LOW'}>
-                                            {u.status}
-                                        </Badge>
-                                    </td>
-                                    {activeTab === 'internal' && (
-                                        <td className="p-4 flex gap-2">
-                                            <button onClick={() => { setEditingUser(u); setShowCreateModal(true); }} className="text-blue-600 hover:bg-blue-50 p-1 rounded">
-                                                <Edit size={16} />
-                                            </button>
-                                            <button onClick={() => handleDelete(u.id)} className="text-red-600 hover:bg-red-50 p-1 rounded">
-                                                <Trash2 size={16} />
-                                            </button>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm min-w-[600px]">
+                        <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
+                            <tr>
+                                <th className="p-4">Usuario</th>
+                                <th className="p-4">DNI</th>
+                                <th className="p-4">Email</th>
+                                <th className="p-4">Rol / Unidad</th>
+                                <th className="p-4">Estado</th>
+                                {activeTab === 'internal' && <th className="p-4">Acciones</th>}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {loading && activeTab === 'internal' ? (
+                                <tr><td colSpan="5" className="p-4 text-center">Cargando usuarios...</td></tr>
+                            ) : (activeTab === 'internal' ? internalUsers : adUsers)
+                                .filter(u =>
+                                    u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                    u.email.toLowerCase().includes(searchTerm.toLowerCase())
+                                )
+                                .map((u) => (
+                                    <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50">
+                                        <td className="p-4 flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                                                {u.role ? <Shield size={14} /> : <User size={14} />}
+                                            </div>
+                                            <span className="font-medium text-gray-900">{u.name}</span>
                                         </td>
-                                    )}
-                                </tr>
-                            ))}
-                    </tbody>
-                </table>
+                                        <td className="p-4 text-gray-600 font-mono">{u.dni || '-'}</td>
+                                        <td className="p-4 text-gray-600">{u.email}</td>
+                                        <td className="p-4">
+                                            {u.role ? (
+                                                <Badge variant={u.role}>{u.role}</Badge>
+                                            ) : (
+                                                <span className="text-gray-500 italic">{u.unit}</span>
+                                            )}
+                                        </td>
+                                        <td className="p-4">
+                                            <Badge variant={u.status === 'ACTIVE' || u.status === 'SYNCED' ? 'RESOLVED' : 'LOW'}>
+                                                {u.status}
+                                            </Badge>
+                                        </td>
+                                        {activeTab === 'internal' && (
+                                            <td className="p-4 flex gap-2">
+                                                <button onClick={() => { setEditingUser(u); setShowCreateModal(true); }} className="text-blue-600 hover:bg-blue-50 p-1 rounded">
+                                                    <Edit size={16} />
+                                                </button>
+                                                <button onClick={() => handleDelete(u.id)} className="text-red-600 hover:bg-red-50 p-1 rounded">
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </td>
+                                        )}
+                                    </tr>
+                                ))}
+                        </tbody>
+                    </table>
+                </div>
             </Card>
 
             {/* Create/Edit Modal */}
             {showCreateModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <Card className="w-96 p-6">
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <Card className="w-full max-w-md p-6">
                         <h2 className="text-xl font-bold mb-4">{editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}</h2>
                         <form onSubmit={handleSaveUser} className="space-y-4">
                             <Input name="name" label="Nombre Completo" defaultValue={editingUser?.name} required />

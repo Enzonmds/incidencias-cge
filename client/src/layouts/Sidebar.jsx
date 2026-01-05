@@ -1,12 +1,14 @@
 import React, { useContext } from 'react';
-import { LayoutDashboard, Ticket, Users, FileText, LogOut, CheckSquare, Wrench, Activity } from 'lucide-react';
+import { LayoutDashboard, Ticket, Users, FileText, LogOut, CheckSquare, Wrench, Activity, X } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import logo from '../assets/logo_cge.png';
 
-const NavItem = ({ to, icon: Icon, children }) => {
+const NavItem = ({ to, icon: Icon, children, onClick }) => {
     return (
         <NavLink
             to={to}
+            onClick={onClick}
             className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-white bg-opacity-10 text-white' : 'text-gray-300 hover:bg-white hover:bg-opacity-5 hover:text-white'
                 }`
@@ -39,46 +41,51 @@ const Sidebar = ({ isOpen, onClose }) => {
                 />
             )}
 
-            <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-cge-sidebar text-white shadow-xl transition-transform duration-300 ease-in-out transform 
+            <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-gradient-to-b from-cge-sidebar to-[#7A3E31] text-white shadow-2xl transition-transform duration-300 ease-in-out transform 
                 ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 flex flex-col`}>
 
-                <div className="p-6 border-b border-white border-opacity-10 flex justify-between items-start">
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight">Consultas CGE</h1>
-                        <p className="text-xs text-gray-300 mt-1">
-                            {user?.name || 'Usuario'} ({user?.role})
-                        </p>
+                <div className="p-6 border-b border-white border-opacity-10 flex justify-between items-center bg-black/10">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <img src={logo} alt="CGE" className="w-10 h-10 object-contain drop-shadow-md" />
+                        <div className="min-w-0">
+                            <h1 className="text-lg font-bold tracking-tight truncate">Consultas CGE</h1>
+                            <p className="text-xs text-gray-300 truncate opacity-80">
+                                {user?.name || 'Usuario'}
+                            </p>
+                        </div>
                     </div>
                     {/* Close button for mobile */}
-                    <button onClick={onClose} className="md:hidden text-gray-300 hover:text-white">
-                        <LogOut size={20} className="transform rotate-180" /> {/* Using LogOut icon as X placeholder or just X if preferred, let's use a simple SVG or icon if available. simpler: just text X for now or generic icon if imports allow. Let's use LogOut rotated or just a span X */}
+                    <button onClick={onClose} className="md:hidden text-gray-300 hover:text-white p-1 hover:bg-white/10 rounded-lg transition-colors">
+                        <X size={24} />
                         <span className="sr-only">Cerrar</span>
                     </button>
                 </div>
 
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-                    <NavItem to="/" icon={LayoutDashboard}>Dashboard</NavItem>
-
-                    <NavItem to="/tickets" icon={Ticket}>Tickets</NavItem>
-
-                    {(hasRole(['ADMIN', 'HUMAN_ATTENTION'])) && (
-                        <NavItem to="/triage" icon={CheckSquare}>Triaje</NavItem>
+                    {!hasRole(['USER']) && (
+                        <NavItem to="/" icon={LayoutDashboard} onClick={onClose}>Dashboard</NavItem>
                     )}
 
-                    {(hasRole(['ADMIN', 'TECHNICAL_SUPPORT'])) && (
-                        <NavItem to="/support" icon={Wrench}>Soporte Técnico</NavItem>
+                    <NavItem to="/tickets" icon={Ticket} onClick={onClose}>Tickets</NavItem>
+
+                    {(hasRole(['ADMIN', 'HUMAN_ATTENTION', 'SUBDIRECTOR'])) && (
+                        <NavItem to="/triage" icon={CheckSquare} onClick={onClose}>Coordinación</NavItem>
+                    )}
+
+                    {(hasRole(['ADMIN', 'TECHNICAL_SUPPORT', 'JEFE', 'SUBDIRECTOR'])) && (
+                        <NavItem to="/support" icon={Wrench} onClick={onClose}>Soporte Técnico</NavItem>
                     )}
 
                     {(hasRole(['ADMIN'])) && (
-                        <NavItem to="/users" icon={Users}>Usuarios</NavItem>
+                        <NavItem to="/users" icon={Users} onClick={onClose}>Usuarios</NavItem>
                     )}
 
                     {(hasRole(['ADMIN', 'MONITOR', 'JEFE', 'SUBDIRECTOR'])) && (
-                        <NavItem to="/system-flow" icon={Activity}>Flujo del Sistema</NavItem>
+                        <NavItem to="/system-flow" icon={Activity} onClick={onClose}>Flujo del Sistema</NavItem>
                     )}
 
                     {(hasRole(['ADMIN', 'AGENT', 'HUMAN_ATTENTION', 'MONITOR', 'JEFE', 'SUBDIRECTOR'])) && (
-                        <NavItem to="/reports" icon={FileText}>Reportes</NavItem>
+                        <NavItem to="/reports" icon={FileText} onClick={onClose}>Reportes</NavItem>
                     )}
                 </nav>
 

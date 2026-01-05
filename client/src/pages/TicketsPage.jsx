@@ -142,7 +142,7 @@ const TicketsPage = () => {
                     <input type="text" placeholder="Buscar por ID, asunto o usuario..." className="outline-none text-sm w-full" />
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                     {['ALL', 'OPEN', 'IN_PROGRESS', 'RESOLVED'].map(status => (
                         <button
                             key={status}

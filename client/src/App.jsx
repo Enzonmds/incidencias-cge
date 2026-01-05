@@ -3,9 +3,11 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/ProtectedRoute';
+import RoleImpersonator from './components/RoleImpersonator';
 
 // Pages
 import Login from './pages/Login';
+
 import Dashboard from './pages/Dashboard';
 import TicketsPage from './pages/TicketsPage';
 import TicketDetail from './pages/TicketDetail';
@@ -20,6 +22,7 @@ import LegalPage from './pages/LegalPage';
 function App() {
   return (
     <AuthProvider>
+      <RoleImpersonator />
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
