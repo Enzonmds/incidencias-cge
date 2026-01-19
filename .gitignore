@@ -1,0 +1,36 @@
+logs.txt
+coverage
+*.log
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.idea
+.DS_Store
+*.swp
+*.swo
+
+# Dependency directories
+node_modules
+jspm_packages
+
+# Secrets and Env overrides
+.env
+.env.test
+.env.production
+.env.local
+config.js
+secrets.js
+clean_secrets.js
+update_env.js
+update_env_email.js
+update_env_final.js
+
+# Testing and util scripts
+simulate_whatsapp.ps1
+test_reset.ps1
+*.ps1
+
+# Build outputs
+/server/dist
+/client/dist
+/client/build
