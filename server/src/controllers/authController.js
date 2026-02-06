@@ -104,3 +104,41 @@ export const verifyWhatsApp = async (req, res) => {
         res.status(400).json({ message: 'Invalid or expired token' });
     }
 };
+
+
+// Setup Password (for Invited Users)
+export const setupPassword = async (req, res) => {
+    try {
+        const { token, password } = req.body;
+
+        if (!token || !password) {
+            return res.status(400).json({ message: 'Token and Password required' });
+        }
+
+        // Verify Token
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET);
+        } catch (err) {
+            return res.status(400).json({ message: 'Invalid or expired token' });
+        }
+
+        if (decoded.purpose !== 'invite') {
+            return res.status(400).json({ message: 'Invalid token purpose' });
+        }
+
+        const user = await User.findByPk(decoded.id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        // Hash new password
+        const passwordHash = await bcrypt.hash(password, 10);
+        user.password_hash = passwordHash;
+        await user.save();
+
+        res.json({ success: true, message: 'Password set successfully' });
+
+    } catch (error) {
+        console.error('Setup Password Error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};

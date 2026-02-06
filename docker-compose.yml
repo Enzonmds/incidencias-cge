@@ -22,28 +22,17 @@ services:
   server:
     build: ./server
     container_name: cge_api
+    command: node src/index.js
     restart: always
     ports:
       - "3001:3000"
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - DATABASE_URL=postgres://${POSTGRES_USER:-cge_admin}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-cge_incidencias}
       - JWT_SECRET=${JWT_SECRET}
       - NODE_ENV=production
-      - WHATSAPP_TOKEN=${WHATSAPP_TOKEN}
-      - PHONE_NUMBER_ID=${PHONE_NUMBER_ID}
-      - WEBHOOK_VERIFY_TOKEN=${WEBHOOK_VERIFY_TOKEN}
-      - FRONTEND_URL=${FRONTEND_URL:-https://consultas.cge.mil.ar}
-      - API_URL=${VITE_API_URL:-https://consultas.cge.mil.ar}
-      - ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD}
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT}
-      - SMTP_USER=${SMTP_USER}
-      - SMTP_PASS=${SMTP_PASS}
-      - SMTP_SECURE=${SMTP_SECURE}
-      - SMTP_FROM=${SMTP_FROM}
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
+
     depends_on:
       db:
         condition: service_healthy

@@ -73,16 +73,27 @@ const UsersPage = () => {
         if (editingUser) {
             // Update
             try {
-                // Ideally PUT /api/users/:id - Assuming endpoint exists or using Create for now if check fails. 
-                // Actually User Controller usually has only Create. I'll stick to Create for new, and mocking Update purely frontend or alert if backend missing.
-                // Wait, I should check if backend supports update. If not, I will add it or just allow Role Change.
-                // For MVP, I will treat Edit as "Update Role".
-                alert("Actualización de usuario simulada (Backend pendiente de endpoint PUT /users/:id).");
-                setEditingUser(null);
-            } catch (error) { console.error(error); }
+                const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${editingUser.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                if (response.ok) {
+                    setShowCreateModal(false);
+                    setEditingUser(null);
+                    fetchUsers();
+                    alert('Usuario actualizado correctamente');
+                } else {
+                    alert('Error al actualizar usuario');
+                }
+            } catch (error) { console.error(error); alert('Error de conexión'); }
         } else {
             // Create
-            formData.password = e.target.password.value;
+            formData.password = 'Cge.1234'; // Default temp password since field is removed
             try {
                 const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
                     method: 'POST',
@@ -96,19 +107,56 @@ const UsersPage = () => {
                     setShowCreateModal(false);
                     fetchUsers();
                     e.target.reset();
+                    alert('Usuario creado. Se ha enviado un correo al usuario para establecer su contraseña.');
                 } else {
                     alert('Error al crear usuario');
                 }
             } catch (error) {
-                alert('Error de conexión');
+                alert('Error de conexión por favor verifique que la VPN esté conectada');
             }
         }
     };
 
     const handleDelete = async (id) => {
         if (!confirm("¿Seguro que deseas eliminar este usuario?")) return;
-        // Mock delete as usually not exposed
-        alert("Eliminación simulada (Backend protegido para evitar borrar admins en demo).");
+
+        try {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                alert('Usuario eliminado correctamente.');
+                fetchUsers();
+            } else {
+                const data = await response.json();
+                alert(data.message || 'Error al eliminar usuario.');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Error de conexión');
+        }
+    };
+
+    const handleResetPassword = async () => {
+        if (!editingUser) return;
+        if (!confirm(`¿Enviar email de restablecimiento a ${editingUser.email}?`)) return;
+
+        try {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${editingUser.id}/reset-password`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                alert('Email de restablecimiento enviado correctamente.');
+            } else {
+                alert('Error al enviar email.');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Error de conexión');
+        }
     };
 
     return (
@@ -221,9 +269,7 @@ const UsersPage = () => {
                             <Input name="dni" label="DNI" defaultValue={editingUser?.dni} placeholder="Opcional" />
                             <Input name="email" label="Email CGE" type="email" defaultValue={editingUser?.email} required />
 
-                            {!editingUser && (
-                                <Input name="password" label="Contraseña" type="password" required />
-                            )}
+                            {/* Password field removed/hidden as per requirements */}
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
@@ -236,6 +282,11 @@ const UsersPage = () => {
 
                             <div className="flex justify-end gap-2 mt-6">
                                 <Button type="button" variant="secondary" onClick={() => { setShowCreateModal(false); setEditingUser(null); }}>Cancelar</Button>
+                                {editingUser && (
+                                    <Button type="button" className="bg-yellow-500 hover:bg-yellow-600 text-white" onClick={handleResetPassword}>
+                                        Restablecer Clave
+                                    </Button>
+                                )}
                                 <Button type="submit">{editingUser ? 'Guardar Cambios' : 'Crear Usuario'}</Button>
                             </div>
                         </form>

@@ -23,7 +23,7 @@ transporter.verify(function (error, success) {
     }
 });
 
-const sendEmail = async ({ to, subject, html }) => {
+export const sendEmail = async ({ to, subject, html }) => {
     try {
         if (!to || !to.includes('@')) {
             console.log(`⚠️ Email skipped. Invalid recipient: ${to}`);
@@ -41,7 +41,7 @@ const sendEmail = async ({ to, subject, html }) => {
         }
 
         const info = await transporter.sendMail({
-            from: `"CONSULTAS CGE" <${process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@cge.mil.ar'}>`,
+            from: `"CONSULTAS CGE" <${process.env.SMTP_FROM || process.env.SMTP_USER || 'notificaciones@cge.mil.ar'}>`,
             to: recipients,
             subject,
             html,
@@ -119,8 +119,8 @@ export const sendSLABreachNotification = async (ticket, type, stage) => {
     // Type: 'UNASSIGNED' or 'NO_RESPONSE'
     // Stage: 1 (Warning -> Mesa), 2 (Breach -> Subdirector)
 
-    const MESA_EMAIL = process.env.MESA_EMAIL || 'mesa@cge.mil.ar'; // Placeholder
-    const SUBDIRECTOR_EMAIL = process.env.SUBDIRECTOR_EMAIL || 'subdirector@cge.mil.ar'; // Placeholder
+    const MESA_EMAIL = process.env.MESA_EMAIL || 'enzonmds@gmail.com'; // Placeholder
+    const SUBDIRECTOR_EMAIL = process.env.SUBDIRECTOR_EMAIL || 'enzonmds@gmail.com'; // Placeholder
 
     let to = MESA_EMAIL;
     let cc = '';

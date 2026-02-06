@@ -17,6 +17,7 @@ import TriagePage from './pages/TriagePage';
 import TechSupportPage from './pages/TechSupportPage';
 import SystemFlowPage from './pages/SystemFlowPage';
 import VerifyWhatsAppPage from './pages/VerifyWhatsAppPage';
+import SetupPasswordPage from './pages/SetupPasswordPage';
 import LegalPage from './pages/LegalPage';
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/verify-whatsapp" element={<VerifyWhatsAppPage />} />
+          <Route path="/setup-password" element={<SetupPasswordPage />} />
           <Route path="/legal" element={<LegalPage />} />
 
           <Route element={<ProtectedRoute />}>

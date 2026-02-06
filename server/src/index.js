@@ -44,7 +44,7 @@ const startServer = async () => {
         await sequelize.sync({ alter: true });
         console.log('Database connected and synced');
 
-        await seedDatabase();
+        // await seedDatabase();
 
         // Initialize RAG (Embeddings)
         await initializeKnowledgeBase();

@@ -26,7 +26,7 @@ const User = sequelize.define('User', {
     },
     password_hash: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: true, // Allow for invited users pending setup
     },
     role: {
         type: DataTypes.ENUM('ADMIN', 'AGENT', 'USER', 'HUMAN_ATTENTION', 'TECHNICAL_SUPPORT', 'MONITOR', 'JEFE', 'SUBDIRECTOR'),
@@ -45,7 +45,7 @@ const User = sequelize.define('User', {
 
     // --- WhatsApp Bot State Machine ---
     whatsapp_step: {
-        type: DataTypes.ENUM('MENU', 'WAITING_DNI', 'WAITING_SELECTION', 'WAITING_LOGIN', 'WAITING_TOPIC', 'WAITING_DESCRIPTION', 'ACTIVE_SESSION', 'GUEST_FLOW', 'WAITING_RATING'),
+        type: DataTypes.ENUM('MENU', 'WAITING_DNI', 'WAITING_EMAIL', 'WAITING_SELECTION', 'WAITING_LOGIN', 'WAITING_TOPIC', 'WAITING_DESCRIPTION', 'ACTIVE_SESSION', 'GUEST_FLOW', 'WAITING_RATING', 'WAITING_RAG_CONFIRMATION'),
         defaultValue: 'MENU',
     },
     whatsapp_temp_role: {
