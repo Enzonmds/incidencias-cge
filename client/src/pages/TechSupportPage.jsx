@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -30,9 +31,11 @@ const TicketList = ({ tickets, type, onAssign, onResolve }) => (
                             </Button>
                         )}
                         {type === 'MINE' && (
-                            <Button size="sm" className="bg-green-600 hover:bg-green-700 w-full md:w-auto" onClick={() => onResolve(ticket.id)}>
-                                <CheckCircle size={16} className="mr-1" /> Resolver
-                            </Button>
+                            <Link to={`/tickets/${ticket.id}`} className="w-full md:w-auto">
+                                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 w-full" onClick={() => { }}>
+                                    <Play size={16} className="mr-1" /> Gestionar
+                                </Button>
+                            </Link>
                         )}
                     </div>
                 </div>
@@ -50,7 +53,7 @@ const TechSupportPage = () => {
     const fetchTickets = async () => {
         try {
             // 1. Fetch Department Queue (Unassigned)
-            const queueRes = await fetch(`${import.meta.env.VITE_API_URL}/api/tickets?status=EN_COLA_DEPARTAMENTAL&cola_atencion=${selectedQueue}`, {
+            const queueRes = await fetch(`${import.meta.env.VITE_API_URL}/api/tickets?status=EN_COLA_DEPARTAMENTAL&queue=${selectedQueue}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (queueRes.ok) setQueueTickets(await queueRes.json());
