@@ -87,16 +87,35 @@ export const processMessage = async (user, messageBody, from) => {
                     await sendWhatsAppMessage(from, `👋 Hola! Soy el Asistente Virtual de CGE.\n\n📝 *Solo procesamos mensajes de texto.*\n🚫 *No se aceptan audios ni llamadas.*\n\nPara iniciar, por favor ingrese su número de DNI (sin puntos):`);
                     return;
                 }
+
+                // NEW: Context Buffer Logic
+                // If input is NOT a DNI (digits), treat it as context and save it.
+                if (!cleanMsg.match(/^\d+$/)) {
+                    console.log(`📝 Buffering Context for ${from}: "${cleanMsg}"`);
+                    // FIX 1: Concatenate Buffer
+                    user.whatsapp_buffer = user.whatsapp_buffer
+                        ? user.whatsapp_buffer + '. ' + messageBody
+                        : messageBody;
+
+                    // Ensure we are in WAITING_DNI mode
+                    user.whatsapp_step = 'WAITING_DNI';
+                    await user.save();
+                    await sendWhatsAppMessage(from, `ℹ️ He guardado tu mensaje inicial.\n\nPara poder abrir el ticket y procesarlo, primero necesito validar tu identidad.\n\n👉 *Por favor, ingresa tu DNI (sin puntos):*`);
+                    return;
+                }
+
                 return await handleDniInput(user, messageBody, from);
 
             case 'WAITING_EMAIL':
                 return await handleEmailInput(user, messageBody, from);
 
-            case 'WAITING_TOPIC':
-                return await handleTopicSelection(user, messageBody, from);
+            // case 'WAITING_TOPIC':  <-- DEPRECATED (Auto-Classification)
+            // case 'WAITING_MENU_SELECTION': <-- DEPRECATED
 
             case 'WAITING_DESCRIPTION':
-                return await handleTicketCreation(user, messageBody, from);
+                // Auto-Classify Description
+                const predictedCategory = await predictQueue(messageBody);
+                return await handleTicketCreation(user, messageBody, from, predictedCategory);
 
             case 'WAITING_SELECTION':
                 return await handleProfileSelection(user, messageBody, from);
@@ -141,23 +160,32 @@ const handleReset = async (user, from) => {
 };
 
 const handleDniInput = async (user, messageBody, from) => {
-    const dniInput = messageBody.replace(/\D/g, ''); // Remove non-digits
-    if (dniInput.length < 6) {
-        await sendWhatsAppMessage(from, `❌ DNI no válido. Por favor, ingrese únicamente números.`);
-        return;
-    }
-
+    const dniInput = messageBody.trim();
     const existingUser = await User.findOne({ where: { dni: dniInput } });
-    console.log(`🔍 Lookup DNI: ${dniInput}. Found: ${existingUser ? 'YES' : 'NO'}`);
 
     if (existingUser) {
         if (existingUser.phone && existingUser.phone === from) {
             // CASE A: DNI & Phone Match -> Auto Verify
-            user.whatsapp_step = 'WAITING_TOPIC';
             user.role = existingUser.role || 'USER';
             user.name = existingUser.name;
             await user.save();
-            await sendWhatsAppMessage(from, `👋 Hola ${existingUser.name}, bienvenido nuevamente al Servicio de Ayuda CGE.\n\nPor favor, seleccione el área de su consulta:\n\n1️⃣ Haberes\n2️⃣ Viaticos\n3️⃣ Casinos | Barrios Militares\n4️⃣ Datos personales\n5️⃣ Juicios\n6️⃣ Suplementos\n7️⃣ Alquileres\n\n📝 *Puede también describir su inconveniente directamente.*`);
+
+            // --- AUTO-CLASSIFICATION BYPASS ---
+            if (user.whatsapp_buffer && user.whatsapp_buffer.length > 5) {
+                // User already sent their problem in buffer
+                await sendWhatsAppMessage(from, `👋 Hola ${existingUser.name}. He recibido tu mensaje: "${user.whatsapp_buffer.substring(0, 30)}..."\n\n🧠 Procesando y creando ticket automáticamente...`);
+
+                const predictedCategory = await predictQueue(user.whatsapp_buffer);
+                // Call creation directly passing buffer as "messageBody" and the category
+                // IMPORTANT: We use the buffer as the description
+                return await handleTicketCreation(user, user.whatsapp_buffer, from, predictedCategory);
+            }
+
+            // If no buffer, ask for description
+            user.whatsapp_step = 'WAITING_DESCRIPTION';
+            await user.save();
+            await sendWhatsAppMessage(from, `👋 Hola ${existingUser.name}, bienvenido nuevamente.\n\n📝 *Por favor, describa su inconveniente (Texto o Audio) para poder ayudarle:*`);
+
         } else {
             // CASE B: DNI Exists, Phone Mismatch -> Magic Link
             console.log('🔒 Authentication required. Sending Magic Link...');
@@ -196,10 +224,10 @@ const handleProfileSelection = async (user, messageBody, from) => {
     if (profileName) {
         user.whatsapp_temp_role = profileName;
         user.role = 'USER'; // Promote to User so they can operate
-        user.whatsapp_step = 'WAITING_TOPIC'; // Proceed to Topic Selection directly
+        user.whatsapp_step = 'WAITING_DESCRIPTION'; // Proceed to Description (Auto Classify)
         await user.save();
 
-        await sendWhatsAppMessage(from, `✅ Perfil configurado correctamente.\n\nA continuación, seleccione el tema de su consulta:\n\n1️⃣ Haberes\n2️⃣ Viaticos\n3️⃣ Casinos | Barrios Militares\n4️⃣ Datos personales\n5️⃣ Juicios\n6️⃣ Suplementos\n7️⃣ Alquileres\n\n📝 *O describa su problema a continuación:*`);
+        await sendWhatsAppMessage(from, `✅ Perfil configurado correctamente.\n\n📝 *Por favor, describa su inconveniente (Texto o Audio) para poder ayudarle:*`);
 
     } else {
         await sendWhatsAppMessage(from, `❌ Opción no válida. Por favor responda con el número de su opción (1, 2, 3 o 4).`);
@@ -221,10 +249,14 @@ const handleTopicSelection = async (user, messageBody, from) => {
 
     if (topic) {
         user.whatsapp_topic = topic;
-        user.whatsapp_step = 'WAITING_DESCRIPTION';
+        // IVR: Intercept flow. Instead of asking for description, ask specific triage questions or offer solutions.
+        // For MVP: Simple Menu.
+        user.whatsapp_step = 'WAITING_MENU_SELECTION';
         await user.save();
-        await sendWhatsAppMessage(from, `📂 Tema seleccionado: *${topic}*.\n\n⚠️ *Importante*: Al solicitar información detallada, usted consiente el uso de sus datos. Lea nuestro aviso legal aquí:\n🔗 ${LEGAL_LINK}\n\n📝 *Por favor, describa detalladamente su consulta ahora:*`);
+
+        await sendWhatsAppMessage(from, `📂 Tema: ${topic}\n\nAntes de continuar, ayúdanos a clasificar el problema:\n\n1️⃣ No tengo internet / Sistema lento\n2️⃣ Problema de Impresora\n3️⃣ Error de Usuario / Clave\n4️⃣ Otro / Consulta General`);
     } else {
+        // If it's not a valid topic number, check if it's a description for RAG or AI prediction
         if (messageBody.trim().length < 5) {
             await sendWhatsAppMessage(from, `⚠️ Por favor, describa su problema con más detalle (mínimo 5 letras) para poder ayudarle.`);
             return;
@@ -246,6 +278,133 @@ const handleTopicSelection = async (user, messageBody, from) => {
         user.whatsapp_topic = `IA_AUTO: ${predictedQueue}`;
         await user.save();
         await handleTicketCreation(user, messageBody, from, predictedQueue);
+    }
+};
+
+const handleIVRSelection = async (user, messageBody, from) => {
+    const selection = messageBody.trim();
+
+    // 1. Internet -> Template
+    if (selection === '1') {
+        await sendWhatsAppMessage(from, `🌐 *Solución Rápida: Internet*\n\nPor favor intente:\n1. Reiniciar su modem.\n2. Verificar si el cable de red está conectado.\n\n¿Se solucionó?\n\nResponda *SI* para finalizar.\nResponda *NO* para crear el ticket.`);
+        user.whatsapp_step = 'WAITING_RAG_CONFIRMATION'; // Reusing confirmation logic logic
+        user.whatsapp_temp_role = 'IVR_SOLVED'; // Marker
+        await user.save();
+        return;
+    }
+
+    // 2. Printer -> Template
+    if (selection === '2') {
+        await sendWhatsAppMessage(from, `🖨️ *Solución Rápida: Impresora*\n\n1. Verifique que tenga papel y toner.\n2. Apague y prenda el equipo.\n\n¿Se solucionó?\n\nResponda *SI* para finalizar.\nResponda *NO* para crear ticket.`);
+        user.whatsapp_step = 'WAITING_RAG_CONFIRMATION';
+        user.whatsapp_temp_role = 'IVR_SOLVED';
+        await user.save();
+        return;
+    }
+
+    // 3. User/Pass -> Template
+    if (selection === '3') {
+        await sendWhatsAppMessage(from, `🔐 *Gestión de Usuarios*\n\nPara blanqueo de clave, ingrese a: https://autogestion.cge.mil.ar\n\n¿Ayudó esto?\n\nResponda *SI* para finalizar.\nResponda *NO* para crear ticket.`);
+        user.whatsapp_step = 'WAITING_RAG_CONFIRMATION';
+        user.whatsapp_temp_role = 'IVR_SOLVED';
+        await user.save();
+        return;
+    }
+
+    // 4. Other -> Create Ticket
+    if (selection === '4') {
+        user.whatsapp_step = 'WAITING_DESCRIPTION';
+        await user.save();
+        await sendWhatsAppMessage(from, `📝 Entendido. Por favor describa su inconveniente detalladamente a continuación:`);
+        return;
+    }
+
+    await sendWhatsAppMessage(from, `❌ Opción no válida. Por favor, seleccione una de las opciones (1, 2, 3 o 4).`);
+};
+
+const handleTicketCreation = async (user, messageBody, from, predictedQueue = null) => {
+    try {
+        const description = messageBody;
+        const shortTitle = description.substring(0, 50) + (description.length > 50 ? '...' : '');
+
+        // Auto-Classification: Use Prediction or Default
+        const aiCategory = predictedQueue || 'Soporte General';
+
+        // FIX: User requested manual triage. AI Prediction should NOT set the category directly
+        // because it implies the ticket skipped coordination.
+        // We set category to 'Sin Clasificar' and append AI suggestion to description.
+        const finalCategory = 'Sin Clasificar';
+
+        // Append AI Prediction to Description for Coordinator visibility
+        description = `${description}\n\n[IA Sugerencia: ${aiCategory}]`;
+
+        // --- Automation: Urgent Trigger ---
+        let priority = 'MEDIUM';
+        let impact = 'LOW';
+        let urgency = 'LOW';
+
+        if (description.toLowerCase().includes('urgente')) {
+            priority = 'CRITICAL'; // Force Critical/High
+            impact = 'HIGH';
+            urgency = 'HIGH';
+            console.log('🚨 URGENT TICKET DETECTED');
+        } else {
+            priority = calculatePriority(user);
+        }
+
+        // --- CONTEXT BUFFER MERGE ---
+        // Just in case it wasn't cleared yet (though standard flow clears it before calling this technically,
+        // but if called from Description state, buffer might be empty.
+        // If called from DNI Bypass, we already passed buffer as description, so we should clear it.)
+        if (user.whatsapp_buffer) {
+            // If we are here, it means we probably used the buffer as the description already in the call
+            // OR we are appending extra context.
+            // To be safe and avoid duplication if we passed buffer as messageBody:
+            if (user.whatsapp_buffer !== description.split('\n\n')[0]) { // Check against original part
+                // Append only if different
+                // description = `${description}\n\n[CONTEXTO ORIGINAL]: ${user.whatsapp_buffer}`;
+            }
+            user.whatsapp_buffer = null;
+            await user.save();
+        }
+
+        const ticket = await Ticket.create({
+            title: `[WhatsApp] ${shortTitle}`, // Removed finalCategory from title to avoid confusion
+            description: description,
+            priority: priority,
+            impact: impact,
+            urgency: urgency,
+            category: finalCategory, // Set to 'Sin Clasificar'
+            cola_atencion: 'COORDINACION', // Manual Triage required
+            created_by_user_id: user.id,
+            dni_solicitante: user.dni,
+            channel: 'WHATSAPP',
+            status: 'PENDIENTE_VALIDACION'
+        });
+
+        // First Message
+        await Message.create({
+            ticket_id: ticket.id,
+            sender_type: 'USER',
+            sender_id: user.id,
+            content: description
+        });
+
+        await sendWhatsAppMessage(from, `✅ *Ticket #${ticket.id} Creado*\n\nSu solicitud ha sido registrada correctamente.\n\nUn agente se pondrá en contacto con usted a la brevedad.`);
+
+        // Reset State
+        user.whatsapp_step = 'ACTIVE_SESSION';
+        user.whatsapp_topic = null;
+        await user.save();
+
+        // Send Email Notification
+        if (user.email) {
+            sendTicketCreated(user, ticket).catch(console.error);
+        }
+
+    } catch (error) {
+        console.error('Error creating ticket via bot:', error);
+        await sendWhatsAppMessage(from, `❌ Hubo un error al crear el ticket. Por favor intente más tarde.`);
     }
 };
 
@@ -321,6 +480,14 @@ const handleActiveSession = async (user, messageBody, from) => {
         if (!GREETINGS.some(g => cleanMsg.startsWith(g))) {
             await sendWhatsAppMessage(from, `⏳ *Sesión expirada*\n\nHan pasado más de 2 horas desde tu última actividad. Vamos a empezar de nuevo.`);
         }
+
+        // FIX 2: Hard Reset on Timeout
+        user.whatsapp_step = 'WAITING_TOPIC';
+        user.whatsapp_topic = null;
+        await user.save();
+
+        await sendWhatsAppMessage(from, `👋 Por favor, seleccione el área de su consulta:\n\n1️⃣ Haberes\n2️⃣ Viaticos\n3️⃣ Casinos | Barrios Militares\n4️⃣ Datos personales\n5️⃣ Juicios\n6️⃣ Suplementos\n7️⃣ Alquileres\n\n📝 *Puede también describir su inconveniente directamente.*`);
+        return;
     }
 
     // 2. Explicit Greeting Handler
@@ -342,7 +509,38 @@ const handleActiveSession = async (user, messageBody, from) => {
         },
         order: [['createdAt', 'DESC']]
     });
+    if (['1', '2', '3'].includes(cleanMsg)) {
+        if (cleanMsg === '1') {
+            // Consultar Mis Tickets (Listar últimos)
+            const tickets = await Ticket.findAll({
+                where: { created_by_user_id: user.id },
+                limit: 3,
+                order: [['createdAt', 'DESC']]
+            });
+            let msg = "📂 *Sus últimos tickets:*\n";
+            tickets.forEach(t => msg += `#${t.id} - ${t.status}\n`);
+            await sendWhatsAppMessage(from, msg);
+            return;
+        }
+        if (cleanMsg === '2') {
+            // Crear Nueva Consulta (Forzar Salida del Ticket Actual)
+            user.whatsapp_step = 'WAITING_TOPIC';
+            user.whatsapp_topic = null;
+            await user.save();
+            await sendWhatsAppMessage(from, `🆕 *Nueva Consulta*\n\nPor favor, seleccione el tema:\n\n1️⃣ Haberes\n2️⃣ Viaticos\n3️⃣ Casinos\n4️⃣ Datos Personales\n5️⃣ Juicios\n6️⃣ Suplementos\n7️⃣ Alquileres`);
+            return;
+        }
+        if (cleanMsg === '3') {
+            // Ver Temas Frecuentes (Link a Knowledge Base)
+            await sendWhatsAppMessage(from, `📚 Puede consultar nuestra base de conocimientos aquí:\n${FRONTEND_URL}/faq`);
+            return;
+        }
+    }
+    // --------------------------------------------------
 
+    // 3. Find Open Ticket (Ahora sí, si no es una opción de menú, es chat)
+
+    // ...
     if (ticket) {
         // ... (Existing logic for appending to ticket) ...
         await Message.create({
@@ -373,16 +571,25 @@ const handleActiveSession = async (user, messageBody, from) => {
         }
 
         // Instead of "I didn't understand", assume they want support
-        if (cleanMsg.length > 5 && !cleanMsg.match(/^\d+$/)) {
-            // Maybe they are describing a problem directly? Let's try to capture it.
-            // We can treat this as "Implicit Description" and ask to confirm topic.
-            // For now, let's just show the menu but friendlier.
+        // IF message is Audio (starts with 🎤) OR Long Text -> Create Ticket Directly
+        const isAudio = messageBody.trim().startsWith('🎤 "'); // From Worker
+        const isLongText = cleanMsg.length > 10 && !cleanMsg.match(/^\d+$/);
+
+        if (isAudio || isLongText) {
+            console.log(`🤖 Implicit Ticket Creation Triggered for ${from}`);
+            await sendWhatsAppMessage(from, `⏳ He recibido tu mensaje. Estoy generando el ticket...`);
+
+            // Predict Category
+            const predictedCategory = await predictQueue(messageBody);
+
+            // Create Ticket
+            return await handleTicketCreation(user, messageBody, from, predictedCategory);
         }
 
         user.whatsapp_step = 'WAITING_TOPIC';
         await user.save();
 
-        await sendWhatsAppMessage(from, `🤔 No tienes tickets abiertos en este momento.\n\nPara iniciar una nueva consulta, por favor elige un tema:\n\n1️⃣ Haberes\n2️⃣ Viaticos\n3️⃣ Casinos | Barrios Militares\n4️⃣ Datos personales\n5️⃣ Juicios\n6️⃣ Suplementos\n7️⃣ Alquileres\n\n📝 *También puedes escribir tu consulta directamente aquí.*`);
+        await sendWhatsAppMessage(from, `🤔 No tienes tickets abiertos en este momento.\n\nPara iniciar una nueva consulta, por favor elige un tema:\n\n1️⃣ Haberes\n2️⃣ Viaticos\n3️⃣ Casinos | Barrios Militares\n4️⃣ Datos personales\n5️⃣ Juicios\n6️⃣ Suplementos\n7️⃣ Alquileres\n\n📝 *También puedes enviar un AUDIO o escribir tu consulta directamente aquí.*`);
     }
 };
 

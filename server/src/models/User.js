@@ -29,12 +29,13 @@ const User = sequelize.define('User', {
         allowNull: true, // Allow for invited users pending setup
     },
     role: {
-        type: DataTypes.ENUM('ADMIN', 'AGENT', 'USER', 'HUMAN_ATTENTION', 'TECHNICAL_SUPPORT', 'MONITOR', 'JEFE', 'SUBDIRECTOR'),
+        type: DataTypes.ENUM('ADMIN', 'AGENT', 'USER', 'HUMAN_ATTENTION', 'TECHNICAL_SUPPORT', 'MONITOR', 'JEFE', 'SUBDIRECTOR', 'GUEST'),
         defaultValue: 'USER',
     },
     phone: {
         type: DataTypes.STRING,
         allowNull: true, // Used for WhatsApp mapping
+        unique: true,
     },
 
     department: {
@@ -45,7 +46,7 @@ const User = sequelize.define('User', {
 
     // --- WhatsApp Bot State Machine ---
     whatsapp_step: {
-        type: DataTypes.ENUM('MENU', 'WAITING_DNI', 'WAITING_EMAIL', 'WAITING_SELECTION', 'WAITING_LOGIN', 'WAITING_TOPIC', 'WAITING_DESCRIPTION', 'ACTIVE_SESSION', 'GUEST_FLOW', 'WAITING_RATING', 'WAITING_RAG_CONFIRMATION'),
+        type: DataTypes.ENUM('MENU', 'WAITING_DNI', 'WAITING_EMAIL', 'WAITING_SELECTION', 'WAITING_LOGIN', 'WAITING_TOPIC', 'WAITING_DESCRIPTION', 'ACTIVE_SESSION', 'GUEST_FLOW', 'WAITING_RATING', 'WAITING_RAG_CONFIRMATION', 'WAITING_MENU_SELECTION'),
         defaultValue: 'MENU',
     },
     whatsapp_temp_role: {
@@ -54,6 +55,10 @@ const User = sequelize.define('User', {
     },
     whatsapp_topic: {
         type: DataTypes.STRING,
+        allowNull: true,
+    },
+    whatsapp_buffer: {
+        type: DataTypes.TEXT,
         allowNull: true,
     },
 });

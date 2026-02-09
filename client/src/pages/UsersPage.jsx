@@ -59,6 +59,7 @@ const UsersPage = () => {
 
     useEffect(() => {
         if (token) fetchAllData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [token]);
 
     const handleSaveUser = async (e) => {
@@ -112,6 +113,7 @@ const UsersPage = () => {
                     alert('Error al crear usuario');
                 }
             } catch (error) {
+                console.error(error);
                 alert('Error de conexión por favor verifique que la VPN esté conectada');
             }
         }
@@ -163,8 +165,8 @@ const UsersPage = () => {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Gestión de Usuarios</h1>
-                    <p className="text-gray-500">Administración de accesos y sincronización AD</p>
+                    <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Gestión de Usuarios</h1>
+                    <p className="text-gray-500 dark:text-gray-400">Administración de accesos y sincronización AD</p>
                 </div>
                 <Button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2">
                     <UserPlus size={18} /> Nuevo Usuario
@@ -172,15 +174,15 @@ const UsersPage = () => {
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-4 border-b border-gray-200">
+            <div className="flex gap-4 border-b border-gray-200 dark:border-slate-700">
                 <button
-                    className={`pb-2 px-1 font-medium ${activeTab === 'internal' ? 'text-cge-sidebar border-b-2 border-cge-sidebar' : 'text-gray-500 hover:text-gray-700'}`}
+                    className={`pb-2 px-1 font-medium ${activeTab === 'internal' ? 'text-cge-sidebar dark:text-cge-blue border-b-2 border-cge-sidebar dark:border-cge-blue' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
                     onClick={() => setActiveTab('internal')}
                 >
                     Administradores & Agentes
                 </button>
                 <button
-                    className={`pb-2 px-1 font-medium ${activeTab === 'external' ? 'text-cge-sidebar border-b-2 border-cge-sidebar' : 'text-gray-500 hover:text-gray-700'}`}
+                    className={`pb-2 px-1 font-medium ${activeTab === 'external' ? 'text-cge-sidebar dark:text-cge-blue border-b-2 border-cge-sidebar dark:border-cge-blue' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
                     onClick={() => setActiveTab('external')}
                 >
                     Usuarios AD (Active Directory)
@@ -192,7 +194,7 @@ const UsersPage = () => {
                 <Search className="text-gray-400" />
                 <input
                     placeholder="Buscar por nombre, email o legajo..."
-                    className="flex-1 outline-none text-sm"
+                    className="flex-1 outline-none text-sm bg-transparent dark:text-white"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -202,7 +204,7 @@ const UsersPage = () => {
             <Card className="overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm min-w-[600px]">
-                        <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
+                        <thead className="bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-gray-400 font-medium border-b border-gray-100 dark:border-slate-700">
                             <tr>
                                 <th className="p-4">Usuario</th>
                                 <th className="p-4">DNI</th>
@@ -221,20 +223,20 @@ const UsersPage = () => {
                                     u.email.toLowerCase().includes(searchTerm.toLowerCase())
                                 )
                                 .map((u) => (
-                                    <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50">
+                                    <tr key={u.id} className="border-b border-gray-50 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
                                         <td className="p-4 flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                                            <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-700 flex items-center justify-center text-gray-500 dark:text-gray-400">
                                                 {u.role ? <Shield size={14} /> : <User size={14} />}
                                             </div>
-                                            <span className="font-medium text-gray-900">{u.name}</span>
+                                            <span className="font-medium text-gray-900 dark:text-gray-100">{u.name}</span>
                                         </td>
-                                        <td className="p-4 text-gray-600 font-mono">{u.dni || '-'}</td>
-                                        <td className="p-4 text-gray-600">{u.email}</td>
+                                        <td className="p-4 text-gray-600 dark:text-gray-400 font-mono">{u.dni || '-'}</td>
+                                        <td className="p-4 text-gray-600 dark:text-gray-400">{u.email}</td>
                                         <td className="p-4">
                                             {u.role ? (
                                                 <Badge variant={u.role}>{u.role}</Badge>
                                             ) : (
-                                                <span className="text-gray-500 italic">{u.unit}</span>
+                                                <span className="text-gray-500 dark:text-gray-500 italic">{u.unit}</span>
                                             )}
                                         </td>
                                         <td className="p-4">
@@ -244,10 +246,10 @@ const UsersPage = () => {
                                         </td>
                                         {activeTab === 'internal' && (
                                             <td className="p-4 flex gap-2">
-                                                <button onClick={() => { setEditingUser(u); setShowCreateModal(true); }} className="text-blue-600 hover:bg-blue-50 p-1 rounded">
+                                                <button onClick={() => { setEditingUser(u); setShowCreateModal(true); }} className="text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-slate-700 p-1 rounded">
                                                     <Edit size={16} />
                                                 </button>
-                                                <button onClick={() => handleDelete(u.id)} className="text-red-600 hover:bg-red-50 p-1 rounded">
+                                                <button onClick={() => handleDelete(u.id)} className="text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-slate-700 p-1 rounded">
                                                     <Trash2 size={16} />
                                                 </button>
                                             </td>
@@ -272,8 +274,8 @@ const UsersPage = () => {
                             {/* Password field removed/hidden as per requirements */}
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
-                                <select name="role" defaultValue={editingUser?.role || 'USER'} className="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rol</label>
+                                <select name="role" defaultValue={editingUser?.role || 'USER'} className="w-full border border-gray-300 dark:border-slate-600 rounded-lg p-2 text-sm bg-white dark:bg-slate-700 dark:text-white">
                                     {ROLES.map(r => (
                                         <option key={r.value} value={r.value}>{r.label}</option>
                                     ))}

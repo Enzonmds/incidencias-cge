@@ -45,7 +45,8 @@ const SetupPasswordPage = () => {
                 setError(data.message || 'Error al establecer contraseña');
             }
         } catch (err) {
-            setError('Error de conexión con el servidor');
+            console.error(err);
+            setError('Error de conexión.');
         } finally {
             setLoading(false);
         }

@@ -14,7 +14,7 @@ const SystemFlowPage = () => {
                 "Canal: WhatsApp o Correo electrónico.",
                 "El sistema identifica al colaborador activo en la BD."
             ],
-            color: "border-gray-400 bg-gray-50",
+            color: "border-gray-400 bg-gray-50 dark:bg-slate-800 dark:border-slate-600",
             type: "USER"
         },
         {
@@ -27,7 +27,7 @@ const SystemFlowPage = () => {
                 "Ingreso: La consulta es recibida por el servidor.",
                 "IA (NLP): Interpreta el texto (Ej: 'Duda sobre recibo')."
             ],
-            color: "border-blue-500 bg-blue-50",
+            color: "border-blue-500 bg-blue-50 dark:bg-blue-900/10 dark:border-blue-800",
             type: "BOT"
         },
         {
@@ -41,7 +41,7 @@ const SystemFlowPage = () => {
                 "Reglas: Si es Liquidación -> Área Haberes.",
                 "Se notifica al equipo correspondiente."
             ],
-            color: "border-indigo-500 bg-indigo-50",
+            color: "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/10 dark:border-indigo-800",
             type: "BOT"
         },
         {
@@ -55,7 +55,7 @@ const SystemFlowPage = () => {
                 "Utiliza herramientas internas para gestionar la respuesta.",
                 "Envía la solución propuesta al colaborador."
             ],
-            color: "border-orange-500 bg-orange-50",
+            color: "border-orange-500 bg-orange-50 dark:bg-orange-900/10 dark:border-orange-800",
             type: "HUMAN"
         },
         {
@@ -69,7 +69,7 @@ const SystemFlowPage = () => {
                 "El colaborador responde desde su WhatsApp.",
                 "El historial queda registrado en la consulta."
             ],
-            color: "border-orange-500 bg-orange-50",
+            color: "border-orange-500 bg-orange-50 dark:bg-orange-900/10 dark:border-orange-800",
             type: "HUMAN"
         },
         {
@@ -83,7 +83,7 @@ const SystemFlowPage = () => {
                 "El usuario recibe: '¿Estás conforme?'.",
                 "El usuario responde 'SI' -> La consulta se cierra."
             ],
-            color: "border-green-500 bg-green-50",
+            color: "border-green-500 bg-green-50 dark:bg-green-900/10 dark:border-green-800",
             type: "USER"
         }
     ];
@@ -91,8 +91,8 @@ const SystemFlowPage = () => {
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="text-2xl font-bold text-gray-800">Ciclo de Vida de la Consulta</h1>
-                <p className="text-gray-500 mb-4">Visualización del proceso de atención desde la inquietud hasta la conformidad del usuario.</p>
+                <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Ciclo de Vida de la Consulta</h1>
+                <p className="text-gray-500 dark:text-gray-400 mb-4">Visualización del proceso de atención desde la inquietud hasta la conformidad del usuario.</p>
                 <div className="flex gap-4 text-sm font-medium">
                     <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
                         <Users size={14} /> Acción Humana
@@ -105,7 +105,7 @@ const SystemFlowPage = () => {
 
             <div className="relative">
                 {/* Connecting Line (Desktop) */}
-                <div className="hidden lg:block absolute top-1/2 left-0 w-full h-1 bg-gray-200 -z-10 transform -translate-y-1/2 rounded"></div>
+                <div className="hidden lg:block absolute top-1/2 left-0 w-full h-1 bg-gray-200 dark:bg-slate-700 -z-10 transform -translate-y-1/2 rounded"></div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
                     {steps.map((step, index) => (
@@ -131,12 +131,12 @@ const SystemFlowPage = () => {
                                         {step.icon}
                                     </div>
 
-                                    <h3 className="font-bold text-gray-800 text-lg">{step.title}</h3>
-                                    <p className="text-sm text-gray-600 leading-relaxed min-h-[60px] px-2">
+                                    <h3 className="font-bold text-gray-800 dark:text-gray-100 text-lg">{step.title}</h3>
+                                    <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed min-h-[60px] px-2">
                                         {step.description}
                                     </p>
 
-                                    <div className="w-full bg-white/60 rounded-lg p-3 text-left space-y-2 text-xs text-gray-600 border border-gray-100">
+                                    <div className="w-full bg-white/60 dark:bg-black/20 rounded-lg p-3 text-left space-y-2 text-xs text-gray-600 dark:text-gray-300 border border-gray-100 dark:border-slate-700">
                                         {step.details.map((detail, i) => (
                                             <div key={i} className="flex items-start gap-2">
                                                 <CheckCircle size={12} className={`mt-0.5 flex-shrink-0 ${step.type === 'BOT' ? 'text-blue-500' : 'text-orange-500'}`} />
@@ -160,7 +160,7 @@ const SystemFlowPage = () => {
                 </div>
             </div>
 
-            <Card className="bg-gray-800 text-white p-6 mt-8">
+            <Card className="bg-gray-800 dark:bg-slate-900 text-white p-6 mt-8 border border-gray-700 dark:border-slate-700">
                 <div className="flex items-center gap-4">
                     <Server size={40} className="text-blue-400" />
                     <div>

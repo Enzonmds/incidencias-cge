@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import { User, Ticket } from './models/index.js';
+import { faker } from '@faker-js/faker';
 
 export const seedDatabase = async () => {
     try {
@@ -8,7 +9,7 @@ export const seedDatabase = async () => {
 
         console.log(`🔐 Seeding Users with Initial Password: ${initialPassword}`);
 
-        // --- 1. USERS ---
+        // --- 1. CORE USERS (Fixed) ---
         // Admin
         const [admin] = await User.findOrCreate({
             where: { email: 'admin@cge.mil.ar' },
@@ -57,139 +58,188 @@ export const seedDatabase = async () => {
             deptUsers[dept.queue] = user;
         }
 
-        // Standard User
+        // Standard User (Juan Perez)
         const [normalUser] = await User.findOrCreate({
             where: { email: 'usuario@cge.mil.ar' },
-            defaults: { name: 'Juan Pérez (User)', password_hash: passwordHash, role: 'USER', phone: '555-USER' }
+            defaults: { name: 'Juan Pérez', password_hash: passwordHash, role: 'USER', phone: '555-USER' }
         });
 
-        console.log('✅ Usuarios de Departamentos Creados (Passwords: 123456)');
+        console.log('✅ Usuarios Principales Creados');
 
-        // --- 2. CLEAN UP ---
+        // --- 2. GENERATE EXTRA USERS (Total ~150) ---
+        const extraUsersCount = 135; // 150 total approx
+        const extraUsers = [];
+
+        console.log(`👤 Generando ${extraUsersCount} usuarios adicionales...`);
+        for (let i = 0; i < extraUsersCount; i++) {
+            const firstName = faker.person.firstName();
+            const lastName = faker.person.lastName();
+            const email = faker.internet.email({ firstName, lastName }).toLowerCase();
+
+            extraUsers.push({
+                name: `${firstName} ${lastName}`,
+                email: email,
+                password_hash: passwordHash,
+                role: 'USER',
+                phone: faker.phone.number(),
+                department: null
+            });
+        }
+
+        // Bulk Create Extra Users (ignoring duplicates if any)
+        await User.bulkCreate(extraUsers, { ignoreDuplicates: true });
+
+        // Fetch all users to use for ticket creation
+        const allUsers = await User.findAll({ where: { role: 'USER' } });
+        console.log(`✅ Total Usuarios en DB: ${allUsers.length + 10}`); // Approx
+
+        // --- 3. CLEAN UP TICKETS ---
         const { Message } = await import('./models/index.js');
         await Message.destroy({ where: {} });
         await Ticket.destroy({ where: {} });
-        console.log('🧹 DB Limpia');
+        console.log('🧹 Tickets limpiados para regeneración');
 
-        // --- 3. SEED TICKETS ---
+        // --- 4. GENERATE REALISTIC TICKETS ---
         const tickets = [];
-
-        // 3.1 GASTOS EN PERSONAL (WhatsApp Simulation)
-        tickets.push({
-            title: 'No cobré antigüedad', description: 'Revisando mi recibo no figura el ítem de antigüedad.',
-            status: 'EN_COLA_DEPARTAMENTAL', category: 'HABERES', cola_atencion: 'GASTOS_PERSONAL',
-            dni_solicitante: '20111222', telefono_contacto: '11-4444-5555',
-            solicitante_grado: 'CI', unidad_codigo: 'U2287', solicitante_nombre_completo: 'Cabo Primero Gómez', solicitante_email: 'gomez@mail.com',
-            channel: 'WHATSAPP',
-            created_by_user_id: normalUser.id, priority: 'HIGH'
-        });
-        tickets.push({
-            title: 'Descuento Mutual erróneo', description: 'Me descontaron doble la cuota de la mutual.',
-            status: 'EN_PROCESO', category: 'ENTIDADES', cola_atencion: 'GASTOS_PERSONAL',
-            dni_solicitante: '20333444', telefono_contacto: '11-6666-7777',
-            solicitante_grado: 'SP', unidad_codigo: 'U2375', solicitante_nombre_completo: 'Sargento Primero López', solicitante_email: 'lopez@mail.com',
-            channel: 'WEB',
-            created_by_user_id: normalUser.id, assigned_agent_id: deptUsers['GASTOS_PERSONAL'].id
-        });
-
-        // 3.2 CONTABILIDAD (Viáticos)
-        tickets.push({
-            title: 'Comisión a Córdoba impaga', description: 'Falta liquidar viáticos de la comisión de hace 15 días.',
-            status: 'EN_COLA_DEPARTAMENTAL', category: 'VIATICOS', cola_atencion: 'CONTABILIDAD',
-            dni_solicitante: '30555666', telefono_contacto: '11-8888-9999',
-            solicitante_grado: 'TT', unidad_codigo: 'U2375', solicitante_nombre_completo: 'Teniente Torres', solicitante_email: 'torres@mail.com',
-            channel: 'WHATSAPP',
-            created_by_user_id: normalUser.id
-        });
-
-        // 3.3 SISTEMAS
-        tickets.push({
-            title: 'Error al ingresar al SAF', description: 'Me tira error 500 al intentar loguearme.',
-            status: 'PENDIENTE_VALIDACION', // New ticket
-            dni_solicitante: '10222333', telefono_contacto: '11-1212-3434',
-            solicitante_grado: 'ST', unidad_codigo: 'U2287', solicitante_nombre_completo: 'Subteniente Martínez', solicitante_email: 'martinez@mail.com',
-            channel: 'WHATSAPP',
-            created_by_user_id: normalUser.id
-        });
-        tickets.push({
-            title: 'Permiso carpeta compartida', description: 'Necesito acceso a la carpeta de Rendiciones.',
-            status: 'EN_PROCESO', category: 'PERMISOS_USUARIOS', cola_atencion: 'SISTEMAS',
-            dni_solicitante: '10222333', telefono_contacto: '11-1212-3434',
-            created_by_user_id: normalUser.id, assigned_agent_id: deptUsers['SISTEMAS'].id
-        });
 
         // 3.4 TESORERIA & SAF (Generic)
         tickets.push({
             title: 'Fondo Fijo', description: 'Solicitud de reposición de fondo fijo.',
-            status: 'EN_COLA_DEPARTAMENTAL', category: 'OTHER', cola_atencion: 'TESORERIA',
+            status: 'EN_COLA_DEPARTAMENTAL', category: 'TESORERIA', cola_atencion: 'TESORERIA',
             dni_solicitante: '40111222', telefono_contacto: '11-7777-6666', created_by_user_id: normalUser.id,
             channel: 'WHATSAPP', solicitante_grado: 'MY', unidad_codigo: 'U2375', solicitante_nombre_completo: 'Mayor Ramirez'
         });
         tickets.push({
             title: 'Usuario bloqueado en SAF', description: 'No puedo operar, usuario bloqueado.',
-            status: 'EN_COLA_DEPARTAMENTAL', category: 'OTHER', cola_atencion: 'SAF',
+            status: 'EN_COLA_DEPARTAMENTAL', category: 'SISTEMAS', cola_atencion: 'SAF',
             dni_solicitante: '50111222', telefono_contacto: '11-0000-1111', created_by_user_id: normalUser.id,
             channel: 'EMAIL', solicitante_grado: 'CT', unidad_codigo: 'U2375', solicitante_nombre_completo: 'Capitán Fernandez'
         });
 
         // Bulk Generation for Stats
+        const ticketCount = 20;
+
         const possibleQueues = ['GASTOS_PERSONAL', 'CONTABILIDAD', 'SISTEMAS', 'TESORERIA', 'SAF', 'CONTRATACIONES'];
-        const possibleCats = ['HABERES', 'VIATICOS', 'RECIBOS', 'OTHER', 'PERMISOS_USUARIOS'];
-        const possibleGrades = [
-            'TG', 'GD', 'GB', // Generales
-            'CY', 'CR', 'TC', 'MY', // Oficiales Superiores
-            'CT', 'TP', 'TT', 'ST', // Oficiales Subalternos
-            'SM', 'SP', 'SA', 'SI', 'SG', 'CI', 'CB', // Suboficiales
-            'SV' // Soldados
+
+        // Revised Categories - No more 'OTHER'
+        const possibleCats = [
+            'HABERES', 'VIATICOS', 'RECIBOS',
+            'FALLA_SERVIDOR', 'ERROR_VPN', 'PERMISOS_USUARIOS',
+            'HARDWARE', 'SOFTWARE', 'ACCESO_REMOTO', 'IMPRESORAS', 'INTERNET'
         ];
-        const possibleUnits = ['U2375', 'U2287', 'U1101', 'U9999'];
 
-        for (let i = 0; i < 50; i++) {
-            const q = possibleQueues[Math.floor(Math.random() * possibleQueues.length)];
-            const status = Math.random() > 0.3 ? 'EN_COLA_DEPARTAMENTAL' : (Math.random() > 0.5 ? 'EN_PROCESO' : 'CERRADO');
-            let assigned = null;
+        const possiblePriorities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+        const possibleStatuses = ['PENDIENTE_VALIDACION', 'EN_COLA_DEPARTAMENTAL', 'EN_PROCESO', 'RESUELTO_TECNICO', 'CERRADO', 'RECHAZADO'];
+        const possibleGrades = ['SV', 'CB', 'CI', 'SG', 'SI', 'SA', 'SP', 'SM', 'ST', 'TT', 'TP', 'CT', 'MY', 'TC', 'CR', 'CY', 'GB', 'GD', 'TG'];
+        const possibleUnits = ['U2375', 'U2287', 'U1101', 'U9999', 'U1000', 'U5555'];
+
+        // Realistic Scenarios
+        const scenarios = [
+            { title: 'No puedo acceder al VPN', desc: 'Me da error de autenticación al intentar conectar desde casa.', cat: 'ERROR_VPN' },
+            { title: 'Impresora trabada', desc: 'La impresora del piso 2 hace ruido y no imprime.', cat: 'IMPRESORAS' },
+            { title: 'Outlook no conecta', desc: 'No me llegan los correos desde hace una hora.', cat: 'SOFTWARE' },
+            { title: 'Pantalla azul', desc: 'Mi PC se reinició sola y mostró pantalla azul.', cat: 'HARDWARE' },
+            { title: 'Solicitud de licencia Office', desc: 'Necesito activar el Office en la nueva notebook.', cat: 'SOFTWARE' },
+            { title: 'Internet lento', desc: 'No puedo abrir páginas externas, la red está muy lenta.', cat: 'INTERNET' },
+            { title: 'Carpeta compartida inaccesible', desc: 'Me pide credenciales para entrar a "Pública".', cat: 'PERMISOS_USUARIOS' },
+            { title: 'Error en liquidación', desc: 'El monto de viáticos no coincide con lo declarado.', cat: 'VIATICOS' },
+            { title: 'Recibo de sueldo no aparece', desc: 'Entro al portal y no veo el recibo de este mes.', cat: 'RECIBOS' },
+            { title: 'Sistema SAF caído', desc: 'Error 504 Gateway Timeout al entrar al SAF.', cat: 'FALLA_SERVIDOR' }
+        ];
+
+        console.log(`🎫 Generando ${ticketCount} tickets...`);
+
+        for (let i = 0; i < ticketCount; i++) {
+            // Random dates in last 60 days
+            const createdDate = faker.date.recent({ days: 60 });
+
+            // Allow some tickets to be resolved later
+            let status = faker.helpers.arrayElement(possibleStatuses);
+            let closedDate = null;
             let rating = null;
+            let assignedAgentId = null;
 
-            if (status !== 'EN_COLA_DEPARTAMENTAL') {
-                assigned = deptUsers[q]?.id;
+            // Pick a scenario or generate random
+            const scenario = Math.random() > 0.3
+                ? faker.helpers.arrayElement(scenarios)
+                : {
+                    title: faker.hacker.phrase(),
+                    desc: faker.lorem.sentence(),
+                    cat: faker.helpers.arrayElement(possibleCats)
+                };
+
+            // Logic for status consistency
+            if (['RESUELTO_TECNICO', 'CERRADO'].includes(status)) {
+                // Ensure resolved tickets have update date after create date
+                const durationHours = faker.number.int({ min: 1, max: 120 }); // 1 hour to 5 days
+                closedDate = new Date(createdDate.getTime() + durationHours * 60 * 60 * 1000);
+
+                // Assign to a dept agent
+                const q = faker.helpers.arrayElement(possibleQueues);
+                assignedAgentId = deptUsers[q]?.id;
+
+                // Add rating for closed tickets
+                if (status === 'CERRADO') {
+                    rating = faker.number.int({ min: 1, max: 5 });
+                }
+            } else if (status === 'EN_PROCESO') {
+                const q = faker.helpers.arrayElement(possibleQueues);
+                assignedAgentId = deptUsers[q]?.id;
             }
 
-            if (status === 'CERRADO') {
-                // Biased Random Rating (Mostly 4-5, some others)
-                const rand = Math.random();
-                if (rand > 0.8) rating = 5;
-                else if (rand > 0.5) rating = 4;
-                else if (rand > 0.3) rating = 3;
-                else if (rand > 0.1) rating = 2;
-                else rating = 1;
-            }
+            // Creator
+            const creator = faker.helpers.arrayElement(allUsers);
 
             tickets.push({
-                title: `Ticket Auto #${i}`, description: 'Generado automáticamente para pruebas de carga y reportes.',
+                title: scenario.title,
+                description: scenario.desc,
                 status: status,
-                category: possibleCats[Math.floor(Math.random() * possibleCats.length)],
-                cola_atencion: q,
-                dni_solicitante: `99${i}00`, telefono_contacto: '11-0000-0000',
+                priority: faker.helpers.arrayElement(possiblePriorities),
+                category: scenario.cat,
+                cola_atencion: faker.helpers.arrayElement(possibleQueues),
 
-                // WhatsApp Simulation Data
-                channel: Math.random() > 0.4 ? 'WHATSAPP' : 'WEB',
-                solicitante_grado: possibleGrades[Math.floor(Math.random() * possibleGrades.length)],
-                unidad_codigo: possibleUnits[Math.floor(Math.random() * possibleUnits.length)],
-                solicitante_nombre_completo: `Solicitante Auto ${i}`,
-                solicitante_email: `soldier${i}@mil.ar`,
+                // Requester Info (Mocked from User or explicit)
+                dni_solicitante: faker.number.int({ min: 20000000, max: 45000000 }).toString(),
+                telefono_contacto: faker.phone.number(),
 
-                created_by_user_id: normalUser.id,
-                assigned_agent_id: assigned,
+                solicitante_grado: faker.helpers.arrayElement(possibleGrades),
+                unidad_codigo: faker.helpers.arrayElement(possibleUnits),
+                solicitante_nombre_completo: creator?.name || faker.person.fullName(),
+                solicitante_email: creator?.email || faker.internet.email(),
+
+                channel: faker.helpers.arrayElement(['WHATSAPP', 'WEB', 'EMAIL']),
+
+                created_by_user_id: creator?.id || normalUser.id,
+                assigned_agent_id: assignedAgentId,
                 rating_score: rating,
-                createdAt: new Date(new Date() - Math.floor(Math.random() * 10 * 24 * 60 * 60 * 1000))
+
+                createdAt: createdDate,
+                updatedAt: closedDate || createdDate // Sequelize handles createdAt automatically usually, but we overwrite for history
             });
         }
 
-        await Ticket.bulkCreate(tickets);
-        console.log('✅ Tickets Realistas y Bulk Creados');
+        // Iterative Creation for better debugging
+        console.log(`🚀 Starting Iterative Insert for ${tickets.length} tickets...`);
+        let successCount = 0;
+
+        for (const t of tickets) {
+            try {
+                await Ticket.create(t);
+                successCount++;
+                if (successCount % 5 === 0) console.log(`   ... inserted ${successCount}`);
+            } catch (err) {
+                console.error(`❌ FAILED to insert ticket "${t.title}":`, err.message);
+                // console.error(err); // Too verbose
+            }
+        }
+
+        console.log(`✅ Seed Completed. Success: ${successCount}/${tickets.length}`);
+
+        const verifyCount = await Ticket.count();
+        console.log(`🔍 VERIFICACIÓN POST-SEED: ${verifyCount} tickets en DB`);
 
     } catch (error) {
         console.error('Seed Error:', error);
+        throw error;
     }
 };
-

@@ -17,8 +17,16 @@ export const predictQueue = async (text) => {
     try {
         if (!classifier) {
             console.log('🤖 Loading AI Model (Zero-Shot)... This may take a moment.');
-            // Using a base-sized multilingual model for better performance/memory balance
-            classifier = await pipeline('zero-shot-classification', 'Xenova/mDeBERTa-v3-base-mnli-xnli');
+            // Using a public model that doesn't require Auth to avoid 401 errors
+            // Was: 'Xenova/mDeBERTa-v3-base-mnli-xnli' (Requires Token sometimes)
+            // Now: 'Xenova/distilbert-base-cipher-mnli' (Public)
+            const modelName = process.env.AI_MODEL_NAME || 'Xenova/distilbert-base-uncased-mnli';
+
+            classifier = await pipeline('zero-shot-classification', modelName, {
+                options: {
+                    use_auth_token: process.env.HF_TOKEN || false
+                }
+            });
         }
 
         const candidateLabels = QUEUE_DEFINITIONS.map(q => q.label);

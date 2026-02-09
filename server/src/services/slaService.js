@@ -126,3 +126,43 @@ export const checkSLA = async () => {
         console.error('❌ SLA Check Error:', error);
     }
 };
+
+export const autoCloseTickets = async () => {
+    try {
+        console.log('⏰ Running Auto-Close Check...');
+        const now = new Date();
+        const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+
+        const resolvedTickets = await Ticket.findAll({
+            where: {
+                status: 'RESUELTO_TECNICO',
+                updatedAt: { [Op.lt]: new Date(now - TWENTY_FOUR_HOURS) }
+            },
+            include: [{ model: User, as: 'creator' }]
+        });
+
+        for (const ticket of resolvedTickets) {
+            console.log(`🔒 Auto-Closing Ticket #${ticket.id} after 24h inactivity.`);
+
+            ticket.status = 'CERRADO';
+            ticket.rating_score = 5; // Default rating for auto-close? Or leave null? Leaving null allows rating later if they wake up.
+            // Actually, if we close it, they might not be able to rate unless we handle CERRADO -> RATING transition.
+            // Let's leave rating null.
+            await ticket.save();
+
+            // Add System Message
+            const { Message } = await import('../models/index.js'); // Dynamic import to avoid circular dependency if any
+            await Message.create({
+                ticket_id: ticket.id,
+                sender_type: 'SYSTEM',
+                content: '🔒 Ticket cerrado automáticamente por falta de respuesta del usuario (24hs).'
+            });
+
+            // Notify User (Optional)
+            // sendWhatsAppMessage(ticket.creator.phone, ...);
+        }
+
+    } catch (error) {
+        console.error('❌ Auto-Close Error:', error);
+    }
+};

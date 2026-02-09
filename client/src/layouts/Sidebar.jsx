@@ -41,8 +41,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                 />
             )}
 
-            <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-gradient-to-b from-cge-sidebar to-[#7A3E31] text-white shadow-2xl transition-transform duration-300 ease-in-out transform 
-                ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 flex flex-col`}>
+            <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-gradient-to-b from-cge-sidebar to-[#7A3E31] dark:from-slate-900 dark:to-slate-800 text-white shadow-2xl transition-transform duration-300 ease-in-out transform 
+                ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 flex flex-col border-r dark:border-dark-border`}>
 
                 <div className="p-6 border-b border-white border-opacity-10 flex justify-between items-center bg-black/10">
                     <div className="flex items-center gap-3 min-w-0">

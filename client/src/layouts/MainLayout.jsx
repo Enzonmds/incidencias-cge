@@ -7,7 +7,7 @@ const MainLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
-        <div className="flex min-h-screen bg-cge-bg">
+        <div className="flex min-h-screen bg-cge-bg dark:bg-dark-bg transition-colors duration-300">
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
             <main className="flex-1 p-4 md:ml-64 md:p-8 overflow-y-auto w-full transition-all duration-300">

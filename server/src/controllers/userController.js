@@ -3,7 +3,11 @@ import { User } from '../models/index.js';
 
 export const getUsers = async (req, res) => {
     try {
+        const { role } = req.query;
+        const whereClause = role ? { role } : {};
+
         const users = await User.findAll({
+            where: whereClause,
             attributes: { exclude: ['password_hash'] }
         });
         res.json(users);

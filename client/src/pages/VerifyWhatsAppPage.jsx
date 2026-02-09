@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 
@@ -7,7 +7,6 @@ const VerifyWhatsAppPage = () => {
     const [searchParams] = useSearchParams();
     const token = searchParams.get('token');
     const { user, login } = useAuth(); // Assuming login function is available
-    const navigate = useNavigate();
 
     const [status, setStatus] = useState('idle'); // idle, verifying, success, error, waiting_login
     const [message, setMessage] = useState('');
@@ -18,23 +17,7 @@ const VerifyWhatsAppPage = () => {
     const [password, setPassword] = useState('');
     const [loginError, setLoginError] = useState('');
 
-    useEffect(() => {
-        if (!token) {
-            setStatus('error');
-            setMessage('Token inválido o faltante.');
-            return;
-        }
-
-        if (user) {
-            // Already logged in, proceed to verify
-            verifyLink();
-        } else {
-            // Need to login first
-            setStatus('waiting_login');
-        }
-    }, [user, token]);
-
-    const verifyLink = async () => {
+    const verifyLink = useCallback(async () => {
         setStatus('verifying');
         try {
             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -78,7 +61,24 @@ const VerifyWhatsAppPage = () => {
             setStatus('error');
             setMessage('Error de conexión con el servidor.');
         }
-    };
+    }, [user, token]);
+
+    useEffect(() => {
+        if (!token) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setStatus('error');
+            setMessage('Token inválido o faltante.');
+            return;
+        }
+
+        if (user) {
+            // Already logged in, proceed to verify
+            verifyLink();
+        } else {
+            // Need to login first
+            setStatus('waiting_login');
+        }
+    }, [user, token, verifyLink]);
 
     const handleLogin = async (e) => {
         e.preventDefault();

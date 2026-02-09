@@ -31,6 +31,15 @@ const Ticket = sequelize.define('Ticket', {
         type: DataTypes.STRING,
         allowNull: true,
     },
+    // --- Priority Matrix ---
+    impact: {
+        type: DataTypes.ENUM('LOW', 'MEDIUM', 'HIGH'),
+        defaultValue: 'LOW',
+    },
+    urgency: {
+        type: DataTypes.ENUM('LOW', 'MEDIUM', 'HIGH'),
+        defaultValue: 'LOW',
+    },
     priority: {
         type: DataTypes.ENUM('LOW', 'MEDIUM', 'HIGH', 'CRITICAL'),
         defaultValue: 'MEDIUM',
@@ -58,12 +67,8 @@ const Ticket = sequelize.define('Ticket', {
     },
 
     category: {
-        type: DataTypes.ENUM(
-            'HABERES', 'ENTIDADES', 'DESCUENTOS', // Gastos en Personal
-            'VIATICOS', // Contabilidad
-            'PERMISOS_USUARIOS', 'RECIBOS', 'ERRORES_SISTEMA', 'HARDWARE', // Sistemas
-            'OTHER'
-        ),
+        type: DataTypes.STRING, // Changed from ENUM to support dynamic AI categories
+        allowNull: true,
         defaultValue: 'OTHER',
     },
 

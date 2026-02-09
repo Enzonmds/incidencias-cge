@@ -27,6 +27,7 @@ const TriagePage = () => {
 
     useEffect(() => {
         fetchPendingTickets();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [token]);
 
     const handleTriage = async (e) => {
@@ -84,8 +85,8 @@ const TriagePage = () => {
 
     return (
         <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-gray-800">Centro de Coordinación y Operaciones</h1>
-            <p className="text-gray-500">Gestión de excepciones, tickets críticos y fallos de clasificación automática.</p>
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Centro de Coordinación y Operaciones</h1>
+            <p className="text-gray-500 dark:text-gray-400">Gestión de excepciones, tickets críticos y fallos de clasificación automática.</p>
 
             <div className="grid grid-cols-1 gap-4">
                 {tickets.map(ticket => {
@@ -107,19 +108,19 @@ const TriagePage = () => {
                                     <Badge variant={ticket.status}>{ticket.status}</Badge>
                                     <span className="text-xs text-gray-400">{new Date(ticket.createdAt).toLocaleString()}</span>
                                 </div>
-                                <h3 className="font-bold text-lg text-gray-900 truncate">{ticket.title}</h3>
+                                <h3 className="font-bold text-lg text-gray-900 dark:text-white truncate">{ticket.title}</h3>
 
-                                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 my-2">
-                                    <p className="text-xs font-bold text-blue-700 mb-1 flex items-center gap-1">
+                                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800 my-2">
+                                    <p className="text-xs font-bold text-blue-700 dark:text-blue-300 mb-1 flex items-center gap-1">
                                         <MessageCircle size={12} /> Último Mensaje:
                                     </p>
-                                    <p className="text-sm text-gray-700 line-clamp-2">{lastMessage}</p>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">{lastMessage}</p>
                                 </div>
 
                                 <div className="flex flex-wrap gap-2 text-sm text-gray-700 mt-2">
-                                    <div className="px-2 py-1 bg-gray-100 rounded">Solic: <b>{ticket.creator?.name}</b></div>
-                                    <div className="px-2 py-1 bg-gray-100 rounded">Cola Actual: <b>{ticket.cola_atencion || 'N/A'}</b></div>
-                                    <div className="px-2 py-1 bg-gray-100 rounded flex items-center gap-1">
+                                    <div className="px-2 py-1 bg-gray-100 dark:bg-slate-700 dark:text-gray-300 rounded">Solic: <b>{ticket.creator?.name}</b></div>
+                                    <div className="px-2 py-1 bg-gray-100 dark:bg-slate-700 dark:text-gray-300 rounded">Cola Actual: <b>{ticket.cola_atencion || 'N/A'}</b></div>
+                                    <div className="px-2 py-1 bg-gray-100 dark:bg-slate-700 dark:text-gray-300 rounded flex items-center gap-1">
                                         Tel: {phoneNumber}
                                     </div>
                                     <button
@@ -142,25 +143,25 @@ const TriagePage = () => {
                         </Card>
                     );
                 })}
-                {tickets.length === 0 && <div className="text-center text-gray-500 p-8 bg-gray-50 rounded-lg">No hay tickets pendientes de validación.</div>}
+                {tickets.length === 0 && <div className="text-center text-gray-500 dark:text-gray-400 p-8 bg-gray-50 dark:bg-slate-800 rounded-lg">No hay tickets pendientes de validación.</div>}
             </div>
 
             {/* History Modal */}
             {actionModal === 'HISTORY' && selectedTicket && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <Card className="w-full max-w-2xl h-[500px] flex flex-col p-0 overflow-hidden">
-                        <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-                            <h3 className="font-bold text-lg">Historial: Ticket #{selectedTicket.id}</h3>
-                            <button onClick={() => setActionModal(null)} className="text-gray-500 hover:text-gray-700"><X size={20} /></button>
+                        <div className="p-4 border-b dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex justify-between items-center">
+                            <h3 className="font-bold text-lg dark:text-white">Historial: Ticket #{selectedTicket.id}</h3>
+                            <button onClick={() => setActionModal(null)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"><X size={20} /></button>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                            <div className="bg-gray-100 p-3 rounded-lg text-sm border border-gray-200">
-                                <p className="font-bold text-gray-700 mb-1">Descripción Original:</p>
-                                <p>{selectedTicket.description}</p>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4 dark:bg-dark-card">
+                            <div className="bg-gray-100 dark:bg-slate-700 p-3 rounded-lg text-sm border border-gray-200 dark:border-slate-600">
+                                <p className="font-bold text-gray-700 dark:text-gray-200 mb-1">Descripción Original:</p>
+                                <p className="dark:text-gray-300">{selectedTicket.description}</p>
                             </div>
                             {selectedTicket.messages?.map((msg, idx) => (
                                 <div key={idx} className={`flex flex-col ${msg.sender_type === 'AGENT' ? 'items-end' : 'items-start'}`}>
-                                    <div className={`max-w-[85%] p-3 rounded-lg text-sm ${msg.sender_type === 'AGENT' ? 'bg-blue-100 text-blue-900' : 'bg-white border border-gray-200 text-gray-800'
+                                    <div className={`max-w-[85%] p-3 rounded-lg text-sm ${msg.sender_type === 'AGENT' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100' : 'bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-800 dark:text-gray-200'
                                         }`}>
                                         <p className="font-bold text-xs mb-1 opacity-70">
                                             {msg.sender_type === 'AGENT' ? 'Agente' : 'Usuario'} - {new Date(msg.createdAt).toLocaleString()}
@@ -170,7 +171,7 @@ const TriagePage = () => {
                                 </div>
                             ))}
                         </div>
-                        <div className="p-4 border-t bg-gray-50 text-right">
+                        <div className="p-4 border-t dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-right">
                             <Button variant="secondary" onClick={() => setActionModal(null)}>Cerrar</Button>
                         </div>
                     </Card>
@@ -189,10 +190,10 @@ const TriagePage = () => {
                             {actionModal === 'APPROVE' ? (
                                 <>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Cola de Atención (Departamento)</label>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cola de Atención (Departamento)</label>
                                         <select
                                             name="queue"
-                                            className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                                            className="w-full border border-gray-300 dark:border-slate-600 rounded-lg p-2 text-sm bg-white dark:bg-slate-700 dark:text-white"
                                             onChange={(e) => {
                                                 const queue = e.target.value;
                                                 const categorySelect = document.querySelector('select[name="category"]');
@@ -244,8 +245,8 @@ const TriagePage = () => {
                                         </select>
                                     </div>
                                     <div className="mt-4">
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
-                                        <select name="category" className="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Categoría</label>
+                                        <select name="category" className="w-full border border-gray-300 dark:border-slate-600 rounded-lg p-2 text-sm bg-white dark:bg-slate-700 dark:text-white">
                                             <option value="OTHER">Seleccione Departamento Primero</option>
                                         </select>
                                     </div>
@@ -261,7 +262,7 @@ const TriagePage = () => {
                                         name="rejectionReason"
                                         required
                                         rows="3"
-                                        className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-cge-red outline-none"
+                                        className="w-full border border-gray-300 dark:border-slate-600 rounded-lg p-2 text-sm focus:ring-2 focus:ring-cge-red outline-none bg-white dark:bg-slate-700 dark:text-white"
                                         placeholder="Ej: Falta adjuntar la foto del recibo."
                                     ></textarea>
                                 </div>

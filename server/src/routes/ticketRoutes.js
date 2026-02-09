@@ -11,6 +11,8 @@ router.post('/', createTicket);
 router.get('/', getTickets);
 router.get('/:id', getTicketById);
 router.put('/:id', updateTicket);
+router.post('/:id/assign', updateTicket); // Alias for assignment if frontend uses this
+router.put('/:id/assign', updateTicket); // Alias for assignment if frontend uses this
 router.post('/:id/messages', addMessageToTicket);
 
 export default router;

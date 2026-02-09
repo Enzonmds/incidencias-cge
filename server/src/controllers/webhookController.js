@@ -3,6 +3,7 @@ import { User } from '../models/index.js';
 import { sendWhatsAppMessage } from '../services/whatsappService.js';
 import { processMessage } from '../services/chatbotService.js';
 import { downloadWhatsAppMedia } from '../services/whatsappMediaService.js';
+import { messageQueue } from '../config/queue.js';
 
 // 1. Webhook Verification (Handshake)
 export const verifyWebhook = (req, res) => {
@@ -22,7 +23,7 @@ export const verifyWebhook = (req, res) => {
     }
 };
 
-// 2. Handle Incoming Messages
+// 2. Handle Incoming Messages (Async via Queue)
 export const handleWhatsAppWebhook = async (req, res) => {
     try {
         const body = req.body;
@@ -37,59 +38,54 @@ export const handleWhatsAppWebhook = async (req, res) => {
             ) {
                 const messageObj = body.entry[0].changes[0].value.messages[0];
                 const from = messageObj.from;
-                const name = body.entry[0].changes[0].value.contacts[0]?.profile?.name || 'Usuario WhatsApp';
+                const name = body.entry[0].changes[0].value.contacts?.[0]?.profile?.name || 'Usuario WhatsApp';
+                const messageId = messageObj.id; // Unique WhatsApp Message ID (wamid)
                 const msgType = messageObj.type;
 
-                let messageBody = '';
+                // LIGHTWEIGHT CONTROLLER: 
+                // We extract minimal data and let the Worker handle the heavy lifting (Download/Transcribe).
+                // This ensures we ack the webhook fast and rely on Queue for deduplication.
+
+                let payload = {
+                    from,
+                    name,
+                    timestamp: Date.now(),
+                    wamid: messageId,
+                    type: msgType,
+                    body: '', // Set below if text
+                    mediaId: null // Set below if media
+                };
 
                 if (msgType === 'text') {
-                    messageBody = messageObj.text.body;
-                } else if (['image', 'document'].includes(msgType)) {
-                    // Download Media (Images & Docs only)
-                    const mediaId = messageObj[msgType]?.id;
-                    const mediaResult = await downloadWhatsAppMedia(mediaId, msgType);
-
-                    if (mediaResult) {
-                        messageBody = `[MEDIA_URL]: ${mediaResult.url}`;
-                        console.log(`📎 Media Downloaded: ${mediaResult.filename}`);
-                    } else {
-                        messageBody = `[ERROR_DESCARGA_MEDIA: ${msgType}]`;
-                    }
+                    payload.body = messageObj.text.body;
                 } else if (msgType === 'audio') {
-                    // Reject Audio
-                    console.log(`🔇 Audio rejected from ${from}`);
-                    await sendWhatsAppMessage(from, `🚫 *Sistema de Texto Exclusivamente*\n\nPor favor, *no envíe audios ni realice llamadas*.\n\nEscriba su consulta para que la Inteligencia Artificial pueda procesarla. Gracias.`);
-                    return res.sendStatus(200); // Stop processing
+                    console.log(`🎤 Audio message received [${messageId}]. Offloading to Worker...`);
+                    payload.mediaId = messageObj.audio.id;
+                } else if (['image', 'document'].includes(msgType)) {
+                    console.log(`📎 Media message received [${messageId}]. Offloading to Worker...`);
+                    payload.mediaId = messageObj[msgType]?.id;
                 } else {
-                    messageBody = `[ARCHIVO: ${msgType}]`;
+                    payload.body = `[ARCHIVO: ${msgType}]`;
                 }
 
-                console.log(`📩 WhatsApp from ${name} (${from}) [${msgType}]: ${messageBody} `);
+                console.log(`📥 [Webhook] Queuing job for ${name} (${from}) - ID: ${messageId}`);
 
-                // 1. Find or Create User by Phone
-                let user = await User.findOne({ where: { phone: from } });
-
-                if (!user) {
-                    // Start as Guest in WAITING_DNI mode
-                    user = await User.create({
-                        name: name,
-                        email: `guest_${from}@cge.mil.ar`,
-                        password_hash: 'guest123',
-                        role: 'USER',
-                        phone: from,
-                        whatsapp_step: 'WAITING_DNI' // First Step
-                    });
-                    // Construct Legal Link
-                    const frontendUrl = process.env.FRONTEND_URL || 'https://consultas.cge.mil.ar';
-                    const legalLink = `${frontendUrl}/legal`;
-
-                    // Send Welcome + Legal + DNI Request
-                    await sendWhatsAppMessage(from, `👋 Hola! Soy el Asistente Virtual de CGE.\n\n⚠️ Antes de continuar, por favor lea nuestro Aviso Legal:\n🔗 ${legalLink}\n\nPara iniciar, por favor ingrese su número de DNI (sin puntos):`);
-                    return res.sendStatus(200);
-                }
-
-                // 2. Delegate to Service
-                await processMessage(user, messageBody, from);
+                // 🚀 ADD TO QUEUE WITH IDEMPOTENCY
+                // jobId ensures that if we receive the same webhook again, Bull will ignore it
+                // CRITICAL FIX: 'removeOnComplete: true' was deleting the job immediately after success,
+                // allowing duplicate processing if the webhook retried after the first job finished.
+                // We now keep jobs for 24 hours or up to 5000 entries to ensure the deduplication window remains active.
+                await messageQueue.add(payload, {
+                    jobId: messageId,
+                    removeOnComplete: {
+                        age: 24 * 3600, // Keep for 24 hours
+                        count: 5000     // Keep last 5000 jobs
+                    },
+                    removeOnFail: {
+                        age: 24 * 3600,
+                        count: 1000
+                    }
+                });
             }
             res.sendStatus(200);
         } else {
