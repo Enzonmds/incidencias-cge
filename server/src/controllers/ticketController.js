@@ -132,12 +132,43 @@ export const getTicketById = async (req, res) => {
 
         if (!ticket) return res.status(404).json({ message: 'Ticket not found' });
 
+        // --- SESSION EXPIRY CHECK (FinOps) ---
+        // Find last message from USER
+        const lastUserMsg = await Message.findOne({
+            where: {
+                ticket_id: ticket.id,
+                sender_type: 'USER'
+            },
+            order: [['createdAt', 'DESC']]
+        });
+
+        let is_session_expired = false;
+        if (lastUserMsg) {
+            const timeSinceLastMsg = Date.now() - new Date(lastUserMsg.createdAt).getTime();
+            const hoursSinceLastMsg = timeSinceLastMsg / (1000 * 60 * 60);
+            if (hoursSinceLastMsg > 24) {
+                is_session_expired = true;
+            }
+        } else {
+            // If no user message (e.g. manually created ticket without interaction yet), assume expired or valid?
+            // If manual, maybe we assume valid until 24h from creation?
+            // Let's assume valid (false) if created < 24h ago
+            const timeSinceCreation = Date.now() - new Date(ticket.createdAt).getTime();
+            if (timeSinceCreation / (1000 * 60 * 60) > 24) {
+                is_session_expired = true;
+            }
+        }
+
         // SECURITY: Check ownership for End Users
         if (req.user?.role === 'USER' && ticket.created_by_user_id !== req.user.id) {
             return res.status(403).json({ message: 'No tiene permiso para ver este ticket.' });
         }
 
-        res.json(ticket);
+        // Convert to JSON and append flag
+        const ticketData = ticket.toJSON();
+        ticketData.is_session_expired = is_session_expired;
+
+        res.json(ticketData);
     } catch (error) {
         console.error('Get Ticket Error:', error);
         res.status(500).json({ message: 'Server error' });

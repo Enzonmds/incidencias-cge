@@ -73,6 +73,26 @@ export const processMessage = async (user, messageBody, from) => {
         // 0. Ignore empty or media-only triggers handled elsewhere
         if (!cleanMsg) return;
 
+        // --- BUSINESS HOURS CHECK (Cost Containment) ---
+        // Mon-Fri, 08:00 - 18:00 (Argentina Time)
+        const now = new Date();
+        const argentinaTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Argentina/Buenos_Aires" }));
+        const day = argentinaTime.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+        const hour = argentinaTime.getHours();
+
+        // Check if Weekend (0 or 6) OR Outside 08-18
+        if (day === 0 || day === 6 || hour < 8 || hour >= 18) {
+            // Only send warning ONCE per session or if it's a new interaction
+            // For now, we send it if we are in initial states or if 24h passed (which we shouldn't be here if closed, but logic applies)
+            // User requested: "Responde INMEDIATAMENTE". To avoid spamming on every msg in a rapid flow, maybe we check if we already sent it recently?
+            // For strict compliance with the request: Send it.
+            // But to avoid "Double Hello", we might want to check context.
+            // Let's attach it.
+
+            console.log(`🌙 Message received out of hours (${day} @ ${hour}hs). Sending OOO warning.`);
+            await sendWhatsAppMessage(from, `🌙 *Horario Fuera de Servicio*\n\nHemos recibido su consulta, pero nuestro equipo opera de Lunes a Viernes de 08:00 a 18:00hs.\nSu solicitud ha quedado en cola y será procesada a primera hora del próximo día hábil.`);
+        }
+
         // 1. GLOBAL COMMANDS
         if (['/reset', 'salir', 'menu', 'exit', 'chau', 'adios', 'bye', 'cancelar'].includes(cleanMsg)) {
             return await handleReset(user, from);
@@ -175,9 +195,16 @@ const handleDniInput = async (user, messageBody, from) => {
                 // User already sent their problem in buffer
                 await sendWhatsAppMessage(from, `👋 Hola ${existingUser.name}. He recibido tu mensaje: "${user.whatsapp_buffer.substring(0, 30)}..."\n\n🧠 Procesando y creando ticket automáticamente...`);
 
-                const predictedCategory = await predictQueue(user.whatsapp_buffer);
+                let predictedCategory = 'Soporte General';
+                try {
+                    predictedCategory = await predictQueue(user.whatsapp_buffer);
+                } catch (error) {
+                    console.error('⚠️ AI/Network Error during prediction. Defaulting to General.', error.message);
+                }
+
                 // Call creation directly passing buffer as "messageBody" and the category
                 // IMPORTANT: We use the buffer as the description
+                // The buffer is cleared INSIDE handleTicketCreation immediately.
                 return await handleTicketCreation(user, user.whatsapp_buffer, from, predictedCategory);
             }
 
@@ -322,9 +349,9 @@ const handleIVRSelection = async (user, messageBody, from) => {
     await sendWhatsAppMessage(from, `❌ Opción no válida. Por favor, seleccione una de las opciones (1, 2, 3 o 4).`);
 };
 
-const handleTicketCreation = async (user, messageBody, from, predictedQueue = null) => {
+const handleTicketCreation = async (user, messageBody, from, predictedQueue = null, linkedTicketId = null) => {
     try {
-        const description = messageBody;
+        let description = messageBody;
         const shortTitle = description.substring(0, 50) + (description.length > 50 ? '...' : '');
 
         // Auto-Classification: Use Prediction or Default
@@ -368,6 +395,7 @@ const handleTicketCreation = async (user, messageBody, from, predictedQueue = nu
             await user.save();
         }
 
+
         const ticket = await Ticket.create({
             title: `[WhatsApp] ${shortTitle}`, // Removed finalCategory from title to avoid confusion
             description: description,
@@ -390,7 +418,12 @@ const handleTicketCreation = async (user, messageBody, from, predictedQueue = nu
             content: description
         });
 
-        await sendWhatsAppMessage(from, `✅ *Ticket #${ticket.id} Creado*\n\nSu solicitud ha sido registrada correctamente.\n\nUn agente se pondrá en contacto con usted a la brevedad.`);
+        // Custom Notification for Linked/Bounced Tickets
+        if (linkedTicketId) {
+            await sendWhatsAppMessage(from, `🔗 *Continuación de Caso*\n\nHemos abierto un nuevo ticket (*#${ticket.id}*) para continuar con su consulta anterior (Ticket #${linkedTicketId}).\n\nUn agente revisará el historial y le responderá a la brevedad.`);
+        } else {
+            await sendWhatsAppMessage(from, `✅ *Ticket #${ticket.id} Creado*\n\nSu solicitud ha sido registrada correctamente.\n\nUn agente se pondrá en contacto con usted a la brevedad.`);
+        }
 
         // Reset State
         user.whatsapp_step = 'ACTIVE_SESSION';
@@ -404,6 +437,9 @@ const handleTicketCreation = async (user, messageBody, from, predictedQueue = nu
 
     } catch (error) {
         console.error('Error creating ticket via bot:', error);
+        const fs = await import('fs');
+        const path = await import('path');
+        fs.appendFileSync(path.resolve('worker.log'), `[ERROR-CHATBOT] ${error.stack}\n`);
         await sendWhatsAppMessage(from, `❌ Hubo un error al crear el ticket. Por favor intente más tarde.`);
     }
 };
@@ -558,12 +594,39 @@ const handleActiveSession = async (user, messageBody, from) => {
             await ticket.save();
             await sendWhatsAppMessage(from, `✅ Información recibida. Su caso #${ticket.id} ha sido reactivado para validación.`);
         } else {
-            await sendWhatsAppMessage(from, `📝 Mensaje agregado al Ticket #${ticket.id}`);
+            // SILENT APPEND: Do not disturb the user with "Message added" notifications.
+            // Just log it internally.
+            // await sendWhatsAppMessage(from, `📝 Mensaje agregado al Ticket #${ticket.id}`); 
         }
         console.log(`✅ Appended to Ticket #${ticket.id}`);
 
     } else {
         // 4. No Ticket Found -> Smart Fallback
+
+        // --- BOUNCE LOGIC (Reply to Closed Ticket) ---
+        // Check if the user has a recent closed ticket they might be replying to
+        const lastTicket = await Ticket.findOne({
+            where: {
+                created_by_user_id: user.id,
+                status: ['CERRADO', 'CERRADO_TIMEOUT', 'RESUELTO_TECNICO', 'RESOLVED', 'CLOSED', 'BAJA', 'RECHAZADO']
+            },
+            order: [['createdAt', 'DESC']]
+        });
+
+        if (lastTicket) {
+            console.log(`🔄 Bounce Detected! User replying to Closed Ticket #${lastTicket.id}`);
+
+            // Construct Linked Description
+            const linkedDescription = `🔗 **Continuación del caso anterior #${lastTicket.id}**\n\n${messageBody}`;
+
+            // Predict Category based on new message
+            const predictedCategory = await predictQueue(messageBody);
+
+            // Create NEW Ticket linked to old one
+            return await handleTicketCreation(user, linkedDescription, from, predictedCategory, lastTicket.id);
+        }
+        // ---------------------------------------------
+
         // If message is media, warn about ticket requirement
         if (messageBody.startsWith('[') && messageBody.endsWith(']')) {
             await sendWhatsAppMessage(from, `📸 Recibí su archivo, pero no tiene un ticket abierto para adjuntarlo.\n\nInicie una consulta primero.`);

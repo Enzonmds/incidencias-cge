@@ -78,7 +78,9 @@ const TicketDetail = () => {
     useEffect(() => {
         const handleKeyDown = (e) => {
             // GUARDS: Disable all hotkeys if ticket is closed/resolved
-            if (['CERRADO', 'RESUELTO_TECNICO', 'RESOLVED', 'CLOSED'].includes(ticket?.status)) return;
+            // GUARDS: Disable all hotkeys if ticket is closed/resolved
+            const TERMINAL_STATES = ['CERRADO', 'CERRADO_TIMEOUT', 'RESUELTO_TECNICO', 'RESOLVED', 'CLOSED', 'BAJA', 'RECHAZADO'];
+            if (TERMINAL_STATES.includes(ticket?.status)) return;
 
             // Internal Note Toggle (Alt + I)
             if (e.altKey && e.key.toLowerCase() === 'i') {
@@ -95,16 +97,8 @@ const TicketDetail = () => {
                 e.preventDefault();
                 handleAction('CLOSE');
             }
-            // Send Message: Ctrl + Enter (Windows/Linux)
-            if (e.ctrlKey && e.key === 'Enter') {
-                e.preventDefault();
-                handleSendMessage();
-            }
-            // Send Message: Cmd + Enter (Mac)
-            if (e.metaKey && e.key === 'Enter') {
-                e.preventDefault();
-                handleSendMessage();
-            }
+            // Send Message: Ctrl + Enter logic moved to Textarea to prevent double-fire
+            // and ensure context.
         };
 
         window.addEventListener('keydown', handleKeyDown);
@@ -301,6 +295,10 @@ const TicketDetail = () => {
 
     const isAgent = ['ADMIN', 'AGENT', 'TECHNICAL_SUPPORT', 'HUMAN_ATTENTION'].includes(user?.role);
 
+    // STRICT READ-ONLY MODE (FinOps/Security)
+    const TERMINAL_STATES = ['CERRADO', 'CERRADO_TIMEOUT', 'RESUELTO_TECNICO', 'RESOLVED', 'CLOSED', 'BAJA', 'RECHAZADO'];
+    const isEditable = ticket && !TERMINAL_STATES.includes(ticket.status);
+
     return (
         <div className="h-[calc(100vh-6rem)] flex flex-col gap-4">
             {/* Top Bar: Navigation & Basic Info */}
@@ -326,6 +324,19 @@ const TicketDetail = () => {
                     <span className="border dark:border-slate-600 px-1 rounded bg-gray-50 dark:bg-slate-700">Alt+I Nota Interna</span>
                 </div>
             </div>
+
+            {/* LOCKED BANNER */}
+            {!isEditable && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 rounded-lg flex items-center gap-3 text-red-700 dark:text-red-300 animate-in fade-in slide-in-from-top-2">
+                    <Lock size={20} />
+                    <span className="font-semibold text-sm">
+                        TICKET CERRADO / SOLO LECTURA
+                    </span>
+                    <span className="text-xs border-l border-red-300 dark:border-red-700 pl-3">
+                        No se pueden realizar modificaciones, asignaciones ni enviar mensajes en este estado.
+                    </span>
+                </div>
+            )}
 
             <div className="flex flex-1 gap-6 overflow-hidden">
                 {/* Main Chat Area */}
@@ -442,11 +453,10 @@ const TicketDetail = () => {
                         <div ref={messagesEndRef} />
                     </div>
 
-                    {/* Input Area */}
                     <div className="p-4 bg-white dark:bg-dark-card border-t border-gray-200 dark:border-dark-border transition-colors">
                         {user?.role !== 'MONITOR' && (
                             <>
-                                {!ticket.assigned_agent_id ? (
+                                {!ticket.assigned_agent_id && isEditable ? (
                                     <div className="flex items-center justify-center p-4 bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-dashed border-gray-300 dark:border-slate-600 transition-colors">
                                         <p className="text-gray-500 dark:text-gray-400 mr-4 text-sm">Debes asignarte este ticket para responder.</p>
                                         <Button
@@ -458,7 +468,7 @@ const TicketDetail = () => {
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className={`relative rounded-xl border transition-colors ${ticket.status === 'CERRADO' || ticket.status === 'RESUELTO_TECNICO' || ticket.status === 'RESOLVED' || ticket.status === 'CLOSED'
+                                    <div className={`relative rounded-xl border transition-colors ${!isEditable
                                         ? 'border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-800/50 opacity-75'
                                         : isInternal
                                             ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/10'
@@ -466,7 +476,7 @@ const TicketDetail = () => {
                                         }`}>
                                         <textarea
                                             ref={inputRef}
-                                            className={`w-full p-3 pr-12 text-sm bg-transparent dark:text-white outline-none resize-none max-h-32 min-h-[44px] ${ticket.status === 'CERRADO' || ticket.status === 'RESUELTO_TECNICO' || ticket.status === 'RESOLVED' || ticket.status === 'CLOSED'
+                                            className={`w-full p-3 pr-12 text-sm bg-transparent dark:text-white outline-none resize-none max-h-32 min-h-[44px] ${!isEditable
                                                 ? 'text-gray-500 cursor-not-allowed'
                                                 : isInternal
                                                     ? 'placeholder-yellow-700/50 dark:placeholder-yellow-500/50 text-yellow-900 dark:text-yellow-100'
@@ -474,17 +484,20 @@ const TicketDetail = () => {
                                                 }`}
                                             rows="1"
                                             placeholder={
-                                                ticket.status === 'CERRADO' || ticket.status === 'RESUELTO_TECNICO' || ticket.status === 'RESOLVED' || ticket.status === 'CLOSED'
-                                                    ? "Este ticket está cerrado y no admite más respuestas."
+                                                !isEditable
+                                                    ? "Ticket Cerrado por Inactividad."
                                                     : isInternal
                                                         ? "Escribiendo nota interna (solo visible para agentes)..."
                                                         : "Escribe una respuesta... (Ctrl+Enter para enviar)"
                                             }
                                             value={messageInput}
                                             onChange={(e) => setMessageInput(e.target.value)}
-                                            disabled={ticket.status === 'CERRADO' || ticket.status === 'RESUELTO_TECNICO' || ticket.status === 'RESOLVED' || ticket.status === 'CLOSED'}
+                                            disabled={!isEditable}
                                             onKeyDown={(e) => {
-                                                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') handleSendMessage();
+                                                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    handleSendMessage();
+                                                }
                                             }}
                                         />
 
@@ -495,15 +508,15 @@ const TicketDetail = () => {
                                                     onClick={() => setIsInternal(!isInternal)}
                                                     className={`p-1.5 rounded-full transition-colors ${isInternal ? 'bg-yellow-200 text-yellow-800' : 'text-gray-400 hover:bg-gray-100'}`}
                                                     title="Nota Interna (Alt+I)"
-                                                    disabled={ticket.status === 'CERRADO' || ticket.status === 'RESUELTO_TECNICO' || ticket.status === 'RESOLVED' || ticket.status === 'CLOSED'}
+                                                    disabled={!isEditable}
                                                 >
                                                     <Lock size={16} />
                                                 </button>
                                             )}
                                             <button
                                                 onClick={handleSendMessage}
-                                                disabled={!messageInput.trim() || ticket.status === 'CERRADO' || ticket.status === 'RESUELTO_TECNICO' || ticket.status === 'RESOLVED' || ticket.status === 'CLOSED'}
-                                                className={`p-1.5 rounded-full transition-colors ${!messageInput.trim() || ticket.status === 'CERRADO' || ticket.status === 'RESUELTO_TECNICO' || ticket.status === 'RESOLVED' || ticket.status === 'CLOSED'
+                                                disabled={!messageInput.trim() || !isEditable || (!isInternal && ticket.is_session_expired)}
+                                                className={`p-1.5 rounded-full transition-colors ${!messageInput.trim() || !isEditable
                                                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                                     : (isInternal ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-cge-blue text-white hover:bg-blue-700')
                                                     }`}
@@ -521,7 +534,7 @@ const TicketDetail = () => {
                 {/* Right Sidebar: Context Info */}
                 <div className="w-80 shrink-0 space-y-4 overflow-y-auto">
                     {/* Actions Panel */}
-                    {isAgent && ticket.status !== 'CERRADO' && ticket.status !== 'CLOSED' && ticket.status !== 'RESUELTO_TECNICO' && ticket.status !== 'RESOLVED' && (
+                    {isAgent && isEditable && (
                         <Card className="p-3">
                             <h3 className="text-xs font-bold text-gray-500 uppercase mb-3">Acciones Rápidas</h3>
                             <div className="flex flex-col gap-2">

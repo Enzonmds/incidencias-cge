@@ -1,0 +1,32 @@
+{
+    "object": "whatsapp_business_account",
+    "entry": [
+        {
+            "changes": [
+                {
+                    "value": {
+                        "messages": [
+                            {
+                                "from": "5491112345678",
+                                "id": "wamid.test.12345",
+                                "text": {
+                                    "body": "Hola, tengo un problema con la impresora"
+                                },
+                                "type": "text",
+                                "timestamp": "1234567890"
+                            }
+                        ],
+                        "contacts": [
+                            {
+                                "profile": {
+                                    "name": "Test User"
+                                },
+                                "wa_id": "5491112345678"
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    ]
+}

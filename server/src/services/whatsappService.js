@@ -7,15 +7,13 @@ export const sendWhatsAppMessage = async (to, text) => {
             return;
         }
 
-        // FIX: Meta Sandbox for Argentina sometimes requires '54 11 15...' instead of '54 9 11...'
-        // If we see '54911' (Mobile Buenos Aires), change to '541115'
-        // This is a specific sandbox fix. In production with real template messages this might vary, but we keep it for now.
-        if (to.startsWith('54911')) {
-            to = to.replace('54911', '541115');
-        }
+        // CORRECTED: Do NOT modify the 'to' number.
+        // The API expects the exact wa_id received in the webhook.
+        // Previous logic for 54911 -> 541115 was causing failures in production.
+        // if (to.startsWith('54911')) { to = to.replace('54911', '541115'); } <-- REMOVED
 
         await axios.post(
-            `https://graph.facebook.com/v17.0/${process.env.PHONE_NUMBER_ID}/messages`,
+            `https://graph.facebook.com/v21.0/${process.env.PHONE_NUMBER_ID}/messages`,
             {
                 messaging_product: 'whatsapp',
                 to: to,
@@ -28,6 +26,7 @@ export const sendWhatsAppMessage = async (to, text) => {
                 },
             }
         );
+        console.error(`[WHATSAPP] Sending to ${to}: "${text}"`);
         console.log(`📤 WhatsApp sent to ${to}`);
     } catch (error) {
         console.error('Error sending WhatsApp message:', error?.response?.data || error.message);

@@ -17,6 +17,7 @@ import { seedDatabase } from './seed.js';
 import { checkSLA, autoCloseTickets } from './services/slaService.js';
 import { initializeKnowledgeBase } from './services/knowledgeService.js';
 import { startWorker } from './workers/whatsappWorker.js';
+import { initCronJobs } from './services/cronService.js';
 
 dotenv.config();
 
@@ -63,9 +64,12 @@ const startServer = async () => {
         // await seedDatabase();
 
         // Initialize RAG (Embeddings)
-        await initializeKnowledgeBase();
+        // Start Background Services
+        initializeKnowledgeBase();
+        startWorker();
+        initCronJobs(); // 23h Auto-Close
 
-        // Start SLA Monitor
+        // Legacy SLA Checks (If still used)
         setInterval(() => {
             checkSLA();
         }, 60000); // Check every minute
@@ -80,7 +84,8 @@ const startServer = async () => {
         autoCloseTickets();
 
         // Start Queue Worker
-        startWorker();
+        // Start Queue Worker (Moved to line 69)
+        // startWorker();
 
         app.listen(PORT, () => {
             console.log(`Server running on port ${PORT}`);

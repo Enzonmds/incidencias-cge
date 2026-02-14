@@ -3,6 +3,7 @@ import { AuthContext } from '../context/AuthContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
+import HistoryModal from '../components/modals/HistoryModal';
 import { Check, X, AlertCircle, Eye, MessageCircle } from 'lucide-react';
 
 const TriagePage = () => {
@@ -148,34 +149,10 @@ const TriagePage = () => {
 
             {/* History Modal */}
             {actionModal === 'HISTORY' && selectedTicket && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <Card className="w-full max-w-2xl h-[500px] flex flex-col p-0 overflow-hidden">
-                        <div className="p-4 border-b dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex justify-between items-center">
-                            <h3 className="font-bold text-lg dark:text-white">Historial: Ticket #{selectedTicket.id}</h3>
-                            <button onClick={() => setActionModal(null)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"><X size={20} /></button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4 dark:bg-dark-card">
-                            <div className="bg-gray-100 dark:bg-slate-700 p-3 rounded-lg text-sm border border-gray-200 dark:border-slate-600">
-                                <p className="font-bold text-gray-700 dark:text-gray-200 mb-1">Descripción Original:</p>
-                                <p className="dark:text-gray-300">{selectedTicket.description}</p>
-                            </div>
-                            {selectedTicket.messages?.map((msg, idx) => (
-                                <div key={idx} className={`flex flex-col ${msg.sender_type === 'AGENT' ? 'items-end' : 'items-start'}`}>
-                                    <div className={`max-w-[85%] p-3 rounded-lg text-sm ${msg.sender_type === 'AGENT' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100' : 'bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-800 dark:text-gray-200'
-                                        }`}>
-                                        <p className="font-bold text-xs mb-1 opacity-70">
-                                            {msg.sender_type === 'AGENT' ? 'Agente' : 'Usuario'} - {new Date(msg.createdAt).toLocaleString()}
-                                        </p>
-                                        <p>{msg.content}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="p-4 border-t dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-right">
-                            <Button variant="secondary" onClick={() => setActionModal(null)}>Cerrar</Button>
-                        </div>
-                    </Card>
-                </div>
+                <HistoryModal
+                    ticketId={selectedTicket.id}
+                    onClose={() => setActionModal(null)}
+                />
             )}
 
             {/* Action Modal (Approve/Reject) */}

@@ -5,7 +5,7 @@ import { sendWhatsAppMessage } from '../services/whatsappService.js';
 export const addMessageToTicket = async (req, res) => {
     try {
         const { id } = req.params;
-        const { content } = req.body;
+        const { content, is_internal } = req.body;
         const userId = req.user.id;
 
         const ticket = await Ticket.findByPk(id, {
@@ -23,20 +23,22 @@ export const addMessageToTicket = async (req, res) => {
             ticket_id: id,
             sender_type: req.user.role === 'USER' ? 'USER' : 'AGENT',
             sender_id: userId,
-            content
+            content,
+            is_internal: is_internal || false
         });
 
         // --- WhatsApp Outgoing Logic ---
-        // If message is from Agent AND ticket is WhatsApp -> Reply to User
-        // If message is from Agent AND ticket is WhatsApp -> Reply to User
         // If message is from Agent AND ticket is WhatsApp -> Reply to User
         if (req.user.role !== 'USER') {
             // SLA: Update Agent Response Timestamp
             ticket.last_agent_response_at = new Date();
             await ticket.save();
 
-            if (ticket.channel === 'WHATSAPP' && ticket.creator?.phone) {
+            // SECURITY FIX: Do NOT send WhatsApp if it is an Internal Note
+            if (!is_internal && ticket.channel === 'WHATSAPP' && ticket.creator?.phone) {
                 await sendWhatsAppMessage(ticket.creator.phone, content);
+            } else if (is_internal) {
+                console.log('🔒 Internal Note saved. WhatsApp notification blocked.');
             }
         }
 

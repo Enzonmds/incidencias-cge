@@ -10,7 +10,13 @@ export const startWorker = () => {
         const { from, name, wamid, type, mediaId } = job.data;
         let { body } = job.data; // Mutable
 
+        const fs = await import('fs');
+        const path = await import('path');
+        const logFile = path.resolve('worker.log');
+        const log = (msg) => fs.appendFileSync(logFile, `[${new Date().toISOString()}] ${msg}\n`);
+
         console.log(`👷 Job Processing: ${wamid} [Type: ${type}]`);
+        log(`Job Processing: ${wamid} [Type: ${type}]`);
 
         try {
             // 0. Handle Media Download (Heavy Lifting)
@@ -83,6 +89,9 @@ export const startWorker = () => {
 
         } catch (error) {
             console.error('Job failed:', error);
+            const fs = await import('fs');
+            const path = await import('path');
+            fs.appendFileSync(path.resolve('worker.log'), `[ERROR] ${error.stack}\n`);
             throw error; // Let Bull handle retries
         }
     });

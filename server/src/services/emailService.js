@@ -15,6 +15,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // Verify connection configuration
+/*
 transporter.verify(function (error, success) {
     if (error) {
         console.log('❌ SMTP Error:', error);
@@ -22,6 +23,7 @@ transporter.verify(function (error, success) {
         console.log('✅ SMTP Server is ready to take our messages');
     }
 });
+*/
 
 export const sendEmail = async ({ to, subject, html }) => {
     try {

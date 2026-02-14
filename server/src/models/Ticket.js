@@ -16,7 +16,7 @@ const Ticket = sequelize.define('Ticket', {
         allowNull: false,
     },
     status: {
-        type: DataTypes.ENUM('PENDIENTE_VALIDACION', 'RECHAZADO', 'EN_COLA_DEPARTAMENTAL', 'EN_PROCESO', 'RESUELTO_TECNICO', 'CERRADO', 'OPEN', 'IN_PROGRESS', 'WAITING_USER', 'RESOLVED'), // Keeping old ones for backward compatibility during migration if needed, or just replace. I will replace but keep old ones if DB has them to avoid crash on startup. Actually, better to just define the new ones and let alter handle it.
+        type: DataTypes.ENUM('PENDIENTE_VALIDACION', 'RECHAZADO', 'EN_COLA_DEPARTAMENTAL', 'EN_PROCESO', 'RESUELTO_TECNICO', 'CERRADO', 'CERRADO_TIMEOUT', 'OPEN', 'IN_PROGRESS', 'WAITING_USER', 'RESOLVED'),
         defaultValue: 'PENDIENTE_VALIDACION',
     },
     dni_solicitante: {
